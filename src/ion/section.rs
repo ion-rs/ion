@@ -23,6 +23,14 @@ impl Section {
         self.dictionary.get(name)
     }
 
+    /// Returns a mutable reference to the field associated with the given name in the dictionary.
+    ///
+    /// If a field exists for the provided name, a mutable reference to that field is returned.
+    /// If no field is associated with the name, `None` is returned.
+    pub fn get_mut(&mut self, name: &str) -> Option<&mut Value> {
+        self.dictionary.get_mut(name)
+    }
+
     pub fn fetch(&self, key: &str) -> Result<&Value, IonError> {
         self.get(key)
             .ok_or_else(|| IonError::MissingValue(key.to_owned()))

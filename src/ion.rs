@@ -32,6 +32,14 @@ impl Ion {
         self.sections.get(key)
     }
 
+    /// Returns a mutable reference to the section associated with the given key.
+    ///
+    /// If a section exists for the provided key, a mutable reference to that section is returned.
+    /// If no section is associated with the key, `None` is returned.
+    pub fn get_mut(&mut self, key: &str) -> Option<&mut Section> {
+        self.sections.get_mut(key)
+    }
+
     pub fn fetch(&self, key: &str) -> Result<&Section, IonError> {
         self.get(key)
             .ok_or_else(|| IonError::MissingSection(key.to_owned()))
