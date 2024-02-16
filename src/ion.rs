@@ -40,6 +40,23 @@ impl Ion {
         self.sections.get_mut(key)
     }
 
+    /// Retrieves a key-value pair from the sections.
+    ///
+    /// This method attempts to find a section by its key within the collection of sections.
+    /// If the section exists, it returns an `Option` containing a tuple of the key as a
+    /// reference to a `String` and the value as a reference to a `Section`. If the key
+    /// does not exist within the sections, it returns `None`.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Option<(&String, &Section)>`. If the key is found, the return value is
+    /// `Some((&String, &Section))`, where the first element is a reference to the key
+    /// and the second element is a reference to the corresponding `Section`. If the key
+    /// is not found, it returns `None`.
+    pub fn get_key_value(&self, key: &str) -> Option<(&String, &Section)> {
+        self.sections.get_key_value(key)
+    }
+
     pub fn fetch(&self, key: &str) -> Result<&Section, IonError> {
         self.get(key)
             .ok_or_else(|| IonError::MissingSection(key.to_owned()))
