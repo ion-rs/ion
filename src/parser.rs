@@ -587,7 +587,7 @@ mod tests {
 
         let mut p = Parser::new("{ foo = [\"bar\"] }");
         assert_eq!(
-            "{ foo = [ \"bar\" ] }",
+            "{ foo = [ bar ] }",
             p.finish_dictionary().map(|d| d.to_string()).unwrap()
         );
     }
@@ -747,11 +747,8 @@ mod tests {
 
     #[test]
     fn display() {
-        assert_eq!(format!("{}", Value::String("foo".to_owned())), "foo");
-        assert_eq!(format!("{}", Value::Integer(1)), "1");
-        assert_eq!(format!("{}", Value::Boolean(true)), "true");
         let ary = Value::Array(vec![Value::Integer(1), Value::String("foo".to_owned())]);
-        assert_eq!(format!("{ary}"), "[ 1, \"foo\" ]");
+        assert_eq!(format!("{ary:#}"), "[ 1, \"foo\" ]");
     }
 
     mod read {

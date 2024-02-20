@@ -16,11 +16,7 @@ impl fmt::Display for Ion {
 impl fmt::Display for Section {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         for (k, v) in &self.dictionary {
-            if v.type_str() == "string" {
-                f.write_fmt(format_args!("{k} = \"{v}\"\n"))?;
-            } else {
-                f.write_fmt(format_args!("{k} = {v}\n"))?;
-            }
+            f.write_fmt(format_args!("{k} = {v:#}\n"))?;
         }
 
         for row in &self.rows {
@@ -38,13 +34,30 @@ impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
             Value::String(v) => {
+                if f.alternate() {
+                    write!(f, "\"")?;
+                }
+
+                let mut inside_quotes = f.alternate();
+
                 for c in v.chars() {
-                    match c {
-                        '\\' => write!(f, "\\\\")?,
-                        '\n' => write!(f, "\\n")?,
-                        '\"' => write!(f, "\\\"")?,
-                        c => write!(f, "{c}")?,
+                    if inside_quotes {
+                        match c {
+                            '\\' => write!(f, "\\\\")?,
+                            '\n' => write!(f, "\\n")?,
+                            '\"' => write!(f, "\\\"")?,
+                            c => write!(f, "{c}")?,
+                        }
+                    } else if c == '"' {
+                        write!(f, "\"")?;
+                        inside_quotes = true;
+                    } else {
+                        write!(f, "{c}")?;
                     }
+                }
+
+                if f.alternate() {
+                    write!(f, "\"")?;
                 }
 
                 Ok(())
@@ -66,13 +79,7 @@ impl fmt::Display for Value {
                         f.write_str(", ")?
                     }
 
-                    if i.is_string() {
-                        f.write_str("\"")?;
-                        i.fmt(f)?;
-                        f.write_str("\"")?;
-                    } else {
-                        i.fmt(f)?;
-                    }
+                    i.fmt(f)?;
                 }
 
                 f.write_str(" ]")
@@ -93,13 +100,7 @@ impl fmt::Display for Value {
                     k.fmt(f)?;
                     f.write_str(" = ")?;
 
-                    if v.type_str() == "string" {
-                        f.write_str("\"")?;
-                        v.fmt(f)?;
-                        f.write_str("\"")?;
-                    } else {
-                        v.fmt(f)?;
-                    }
+                    v.fmt(f)?;
                 }
 
                 f.write_str(" }")
