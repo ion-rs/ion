@@ -13,6 +13,7 @@ bool = true
 # comment
 |  1| 2 |
 |  2| 3 |
+|  4 | one:"hello \" world" two:"world" |
 
 [mixed]
 a=1

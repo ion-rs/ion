@@ -1,5 +1,5 @@
 use crate::{Ion, Section, Value};
-use std::fmt;
+use std::fmt::{self, Write};
 
 impl fmt::Display for Ion {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
@@ -35,29 +35,20 @@ impl fmt::Display for Value {
         match self {
             Value::String(v) => {
                 if f.alternate() {
-                    write!(f, "\"")?;
+                    f.write_str("\"")?;
                 }
 
-                let mut inside_quotes = f.alternate();
-
                 for c in v.chars() {
-                    if inside_quotes {
-                        match c {
-                            '\\' => write!(f, "\\\\")?,
-                            '\n' => write!(f, "\\n")?,
-                            '\"' => write!(f, "\\\"")?,
-                            c => write!(f, "{c}")?,
-                        }
-                    } else if c == '"' {
-                        write!(f, "\"")?;
-                        inside_quotes = true;
-                    } else {
-                        write!(f, "{c}")?;
+                    match c {
+                        '\\' => f.write_str(if f.alternate() { "\\\\" } else { "\\" })?,
+                        '\n' => f.write_str("\\n")?,
+                        '\"' => f.write_str(if f.alternate() { "\\\"" } else { "\"" })?,
+                        _ => f.write_char(c)?,
                     }
                 }
 
                 if f.alternate() {
-                    write!(f, "\"")?;
+                    f.write_str("\"")?;
                 }
 
                 Ok(())

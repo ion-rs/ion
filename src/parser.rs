@@ -587,8 +587,8 @@ mod tests {
 
         let mut p = Parser::new("{ foo = [\"bar\"] }");
         assert_eq!(
-            "{ foo = [ bar ] }",
-            p.finish_dictionary().map(|d| d.to_string()).unwrap()
+            "{ foo = [ \"bar\" ] }",
+            p.finish_dictionary().map(|d| format!("{d:#}")).unwrap()
         );
     }
 
