@@ -70,7 +70,7 @@ impl fmt::Display for Value {
                         f.write_str(", ")?
                     }
 
-                    i.fmt(f)?;
+                    write!(f, "{i:#}")?;
                 }
 
                 f.write_str(" ]")
@@ -91,7 +91,7 @@ impl fmt::Display for Value {
                     k.fmt(f)?;
                     f.write_str(" = ")?;
 
-                    v.fmt(f)?;
+                    write!(f, "{v:#}")?;
                 }
 
                 f.write_str(" }")
