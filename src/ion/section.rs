@@ -281,18 +281,20 @@ mod tests {
             let ion = ion!(
                 r#"
                 [FOO]
-                |head1 |head2 |head3 |
-                |------|------|------|
-                | a\|b | a\\b | a\nb |
+                |head1 |head2 |head3 |head4 | head5  |
+                |------|------|------|------|--------|
+                | a\|b | a\\b | a\nb | a\tb | a\\\nb |
                 "#
             );
 
             let section = ion.get("FOO").unwrap();
             let first_row = section.rows_without_header().first().unwrap();
-            assert_eq!(3, first_row.len());
+            assert_eq!(5, first_row.len());
             assert_eq!(Value::String("a|b".to_string()), first_row[0]);
             assert_eq!(Value::String("a\\b".to_string()), first_row[1]);
             assert_eq!(Value::String("a\nb".to_string()), first_row[2]);
+            assert_eq!(Value::String("a\tb".to_string()), first_row[3]);
+            assert_eq!(Value::String("a\\\nb".to_string()), first_row[4]);
             assert_eq!(1, section.rows_without_header().len())
         }
 
