@@ -321,7 +321,7 @@ impl<'a> Parser<'a> {
         self.cur.next();
 
         self.slice_to_excluding('"')
-            .map(|s| Value::String(replace_escapes(s)))
+            .map(|s| Value::String(replace_escapes(s, true)))
     }
 
     fn keyval_sep(&mut self) -> bool {
@@ -372,6 +372,7 @@ impl<'a> Parser<'a> {
             self.slice_to_excluding('|')
                 .map(str::trim_end)
                 .unwrap_or_default(),
+            false,
         )
     }
 
@@ -517,7 +518,7 @@ impl fmt::Display for ParserError {
     }
 }
 
-fn replace_escapes(s: &str) -> String {
+fn replace_escapes(s: &str, escape_quote: bool) -> String {
     let mut result = String::new();
     let mut escaping = false;
     for c in s.chars() {
@@ -530,7 +531,8 @@ fn replace_escapes(s: &str) -> String {
 
             (true, 'n') => result.push('\n'),
             (true, 't') => result.push('\t'),
-            (true, '\\' | '"' | '|') => result.push(c),
+            (true, '\\' | '|') => result.push(c),
+            (true, '"') if escape_quote => result.push(c),
             (true, c) => {
                 // When an unknown escape is encountered, print it as is e.g. \a -> \a
                 result.push('\\');
@@ -778,15 +780,16 @@ mod tests {
 
     #[test]
     fn replace_escapes() {
-        assert_eq!("a b", super::replace_escapes("a b"));
-        assert_eq!("a b\\", super::replace_escapes(r"a b\"));
-        assert_eq!("a\nb", super::replace_escapes(r"a\nb"));
-        assert_eq!("a\tb", super::replace_escapes(r"a\tb"));
-        assert_eq!("a\\b", super::replace_escapes(r"a\\b"));
-        assert_eq!("a\\nb", super::replace_escapes(r"a\\nb"));
-        assert_eq!("a|b", super::replace_escapes(r"a\|b"));
-        assert_eq!("a\"b", super::replace_escapes("a\\\"b"));
-        assert_eq!("a\\n\\t\\\\b", super::replace_escapes(r"a\\n\\t\\\b"));
+        assert_eq!("a b", super::replace_escapes("a b", true));
+        assert_eq!("a b\\", super::replace_escapes(r"a b\", true));
+        assert_eq!("a\nb", super::replace_escapes(r"a\nb", true));
+        assert_eq!("a\tb", super::replace_escapes(r"a\tb", true));
+        assert_eq!("a\\b", super::replace_escapes(r"a\\b", true));
+        assert_eq!("a\\nb", super::replace_escapes(r"a\\nb", true));
+        assert_eq!("a|b", super::replace_escapes(r"a\|b", true));
+        assert_eq!("a\"b", super::replace_escapes("a\\\"b", true));
+        assert_eq!("a\\\"b", super::replace_escapes("a\\\"b", false));
+        assert_eq!("a\\n\\t\\\\b", super::replace_escapes(r"a\\n\\t\\\b", true));
     }
 
     mod read {
