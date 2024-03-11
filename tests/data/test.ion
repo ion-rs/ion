@@ -3,6 +3,7 @@ ary = [ "a", "b", 3 ]
 first = "hello \\ hello \n hello \""
 # comment
 second ="another"
+third = "hello \\n world"
 bool = true
 
 [table]
@@ -13,7 +14,7 @@ bool = true
 # comment
 |  1| 2 |
 |  2| 3 |
-|  4 | one:"hello \" world" two:"world" |
+|  4 | one:"hello \" world" two:"hello \| world" three: "hello \\n world" |
 
 [mixed]
 a=1

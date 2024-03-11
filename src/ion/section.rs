@@ -385,7 +385,7 @@ mod tests {
             let first_row = section.rows.first().unwrap();
             assert_eq!(3, first_row.len());
             assert_eq!("", first_row[0].to_string());
-            assert_eq!("a|b", first_row[1].to_string());
+            assert_eq!("a\\|b", first_row[1].to_string());
             assert_eq!("a", first_row[2].to_string());
             assert_eq!(3, section.rows_without_header().len())
         }

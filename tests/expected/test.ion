@@ -3,6 +3,7 @@ ary = [ "a", "b", 3 ]
 bool = true
 first = "hello \\ hello \n hello \""
 second = "another"
+third = "hello \\n world"
 
 [mixed]
 B = 2
@@ -16,5 +17,5 @@ a = 1
 | one | two |
 | 1 | 2 |
 | 2 | 3 |
-| 4 | one:"hello \" world" two:"world" |
+| 4 | one:"hello \" world" two:"hello \| world" three: "hello \\n world" |
 

@@ -35,22 +35,39 @@ impl fmt::Display for Value {
         match self {
             Value::String(v) => {
                 if f.alternate() {
-                    f.write_str("\"")?;
-                }
+                    f.write_char('"')?;
+                    for c in v.chars() {
+                        match c {
+                            '\\' => f.write_str("\\\\")?,
+                            '\n' => f.write_str("\\n")?,
+                            '\"' => f.write_str("\\\"")?,
+                            _ => f.write_char(c)?,
+                        }
+                    }
+                    f.write_char('"')?;
+                } else {
+                    let mut escaping = false;
+                    for c in v.chars() {
+                        match (escaping, c) {
+                            (false, '\\') => {
+                                escaping = true;
+                                f.write_char('\\')?;
+                                continue;
+                            }
+                            (false, '\n') => f.write_str("\\n")?,
+                            (false, '\t') => f.write_str("\\t")?,
+                            (false, '|') => f.write_str("\\|")?,
 
-                for c in v.chars() {
-                    match c {
-                        '\\' => f.write_str(if f.alternate() { "\\\\" } else { "\\" })?,
-                        '\n' => f.write_str("\\n")?,
-                        '\"' => f.write_str(if f.alternate() { "\\\"" } else { "\"" })?,
-                        _ => f.write_char(c)?,
+                            (true, '\\') => f.write_char('\\')?,
+                            (true, 'n') => f.write_str("\\n")?,
+                            (true, 't') => f.write_str("\\t")?,
+                            (true, '|') => f.write_str("\\|")?,
+
+                            (_, c) => f.write_char(c)?,
+                        }
+                        escaping = false;
                     }
                 }
-
-                if f.alternate() {
-                    f.write_str("\"")?;
-                }
-
                 Ok(())
             }
 
