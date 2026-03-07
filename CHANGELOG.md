@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.1
+
+- Fixed a couple of formatting edge-cases
+
 ## 0.9.0
 
 - Added license

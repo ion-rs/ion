@@ -8,6 +8,9 @@ where
 {
     type Err;
 
+    /// # Errors
+    ///
+    /// Returns an error when `T` cannot be converted into `Self`.
     fn from_ion(_: &T) -> Result<Self, Self::Err>;
 }
 
@@ -15,7 +18,10 @@ impl FromIon<Value> for String {
     type Err = ();
 
     fn from_ion(value: &Value) -> Result<Self, Self::Err> {
-        value.as_string().map(|s| s.to_owned()).ok_or(())
+        value
+            .as_string()
+            .map(std::borrow::ToOwned::to_owned)
+            .ok_or(())
     }
 }
 

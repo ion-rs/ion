@@ -1,5 +1,5 @@
 use crate::{Ion, Section, Value};
-use std::fmt;
+use std::fmt::{self, Write};
 
 impl fmt::Display for Ion {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
@@ -16,11 +16,7 @@ impl fmt::Display for Ion {
 impl fmt::Display for Section {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         for (k, v) in &self.dictionary {
-            if v.type_str() == "string" {
-                f.write_fmt(format_args!("{k} = \"{v}\"\n"))?;
-            } else {
-                f.write_fmt(format_args!("{k} = {v}\n"))?;
-            }
+            f.write_fmt(format_args!("{k} = {v:#}\n"))?;
         }
 
         for row in &self.rows {
@@ -38,15 +34,37 @@ impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
             Value::String(v) => {
-                for c in v.chars() {
-                    match c {
-                        '\\' => write!(f, "\\\\")?,
-                        '\n' => write!(f, "\\n")?,
-                        '\"' => write!(f, "\\\"")?,
-                        c => write!(f, "{c}")?,
+                if f.alternate() {
+                    f.write_char('"')?;
+                    for c in v.chars() {
+                        match c {
+                            '\\' => f.write_str("\\\\")?,
+                            '\n' => f.write_str("\\n")?,
+                            '\"' => f.write_str("\\\"")?,
+                            _ => f.write_char(c)?,
+                        }
+                    }
+                    f.write_char('"')?;
+                } else {
+                    let mut escaping = false;
+                    for c in v.chars() {
+                        match (escaping, c) {
+                            (false, '\\') => {
+                                escaping = true;
+                                f.write_char('\\')?;
+                                continue;
+                            }
+                            (false, '\n') | (true, 'n') => f.write_str("\\n")?,
+                            (false, '\t') | (true, 't') => f.write_str("\\t")?,
+                            (false | true, '|') => f.write_str("\\|")?,
+
+                            (true, '\\') => f.write_char('\\')?,
+
+                            (_, c) => f.write_char(c)?,
+                        }
+                        escaping = false;
                     }
                 }
-
                 Ok(())
             }
 
@@ -63,16 +81,10 @@ impl fmt::Display for Value {
                     if first {
                         first = false;
                     } else {
-                        f.write_str(", ")?
+                        f.write_str(", ")?;
                     }
 
-                    if i.is_string() {
-                        f.write_str("\"")?;
-                        i.fmt(f)?;
-                        f.write_str("\"")?;
-                    } else {
-                        i.fmt(f)?;
-                    }
+                    write!(f, "{i:#}")?;
                 }
 
                 f.write_str(" ]")
@@ -87,19 +99,13 @@ impl fmt::Display for Value {
                     if first {
                         first = false;
                     } else {
-                        f.write_str(", ")?
+                        f.write_str(", ")?;
                     }
 
                     k.fmt(f)?;
                     f.write_str(" = ")?;
 
-                    if v.type_str() == "string" {
-                        f.write_str("\"")?;
-                        v.fmt(f)?;
-                        f.write_str("\"")?;
-                    } else {
-                        v.fmt(f)?;
-                    }
+                    write!(f, "{v:#}")?;
                 }
 
                 f.write_str(" }")
