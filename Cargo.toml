@@ -2,7 +2,7 @@
 name = "ion"
 version = "0.9.1"
 description = "*.ion file parser"
-edition = "2021"
+edition = "2024"
 license = "MIT"
 homepage = "https://github.com/ion-rs/ion"
 repository = "https://github.com/ion-rs/ion"
