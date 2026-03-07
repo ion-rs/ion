@@ -1,5 +1,5 @@
-use crate::ion::Value;
 use crate::Row;
+use crate::ion::Value;
 
 pub trait FromRow
 where
@@ -7,6 +7,9 @@ where
 {
     type Err;
 
+    /// # Errors
+    ///
+    /// Returns an error when the row values cannot be converted into `Self`.
     fn from_str_iter<'a, I>(row: I) -> Result<Self, Self::Err>
     where
         I: Iterator<Item = &'a Value>;
@@ -18,6 +21,9 @@ where
 {
     type Err;
 
+    /// # Errors
+    ///
+    /// Returns an error when parsing the row into `F` fails.
     fn parse<F: FromRow>(&self) -> Result<F, F::Err>;
 }
 

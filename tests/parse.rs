@@ -1,4 +1,4 @@
-use ion::{ion, Ion};
+use ion::{Ion, ion};
 use std::fs;
 use std::path::Path;
 

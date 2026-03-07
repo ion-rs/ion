@@ -20,14 +20,19 @@ pub struct Ion {
 }
 
 impl Ion {
+    #[must_use]
     pub fn new(sections: BTreeMap<String, Section>) -> Ion {
         Ion { sections }
     }
 
+    /// # Errors
+    ///
+    /// Returns a parser error when the input cannot be parsed into a valid Ion document.
     pub fn from_str_filtered(s: &str, accepted_sections: Vec<&str>) -> Result<Self, IonError> {
         parser_to_ion(Parser::new_filtered(s, accepted_sections))
     }
 
+    #[must_use]
     pub fn get(&self, key: &str) -> Option<&Section> {
         self.sections.get(key)
     }
@@ -53,10 +58,14 @@ impl Ion {
     /// `Some((&String, &Section))`, where the first element is a reference to the key
     /// and the second element is a reference to the corresponding `Section`. If the key
     /// is not found, it returns `None`.
+    #[must_use]
     pub fn get_key_value(&self, key: &str) -> Option<(&String, &Section)> {
         self.sections.get_key_value(key)
     }
 
+    /// # Errors
+    ///
+    /// Returns [`IonError::MissingSection`] when the key does not exist.
     pub fn fetch(&self, key: &str) -> Result<&Section, IonError> {
         self.get(key)
             .ok_or_else(|| IonError::MissingSection(key.to_owned()))
@@ -142,12 +151,12 @@ mod tests {
     #[test]
     fn row_without_header() {
         let ion = ion!(
-            r#"
+            r"
             [FOO]
             |1||2|
             |1|   |2|
             |1|2|3|
-        "#
+        "
         );
 
         let rows = ion.get("FOO").unwrap().rows_without_header();
@@ -157,13 +166,13 @@ mod tests {
     #[test]
     fn row_with_header() {
         let ion = ion!(
-            r#"
+            r"
             [FOO]
             | 1 | 2 | 3 |
             |---|---|---|
             |1||2|
             |1|   |2|
-        "#
+        "
         );
 
         let rows = ion.get("FOO").unwrap().rows_without_header();
@@ -173,11 +182,11 @@ mod tests {
     #[test]
     fn no_rows_with_header() {
         let ion = ion!(
-            r#"
+            r"
             [FOO]
             | 1 | 2 | 3 |
             |---|---|---|
-        "#
+        "
         );
 
         let rows = ion.get("FOO").unwrap().rows_without_header();
@@ -187,14 +196,14 @@ mod tests {
     #[test]
     fn filtered_section() {
         let ion = ion_filtered!(
-            r#"
+            r"
             [FOO]
             |1||2|
             |1|   |2|
             |1|2|3|
             [BAR]
             |1||2|
-        "#,
+        ",
             vec!["FOO"]
         );
 

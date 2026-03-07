@@ -10,7 +10,7 @@ pub enum IonError {
 }
 
 impl error::Error for IonError {
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "IonError"
     }
 }

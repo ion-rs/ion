@@ -21,7 +21,7 @@ pub struct Parser<'a> {
     array_capacity: usize,
 }
 
-impl<'a> Iterator for Parser<'a> {
+impl Iterator for Parser<'_> {
     type Item = Element;
 
     fn next(&mut self) -> Option<Element> {
@@ -55,7 +55,7 @@ impl<'a> Iterator for Parser<'a> {
             }
 
             return match c {
-                '|' => self.row(),
+                '|' => Some(self.row()),
                 '#' => self.comment(),
                 _ => self.entry(),
             };
@@ -64,24 +64,29 @@ impl<'a> Iterator for Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
+    #[must_use]
     pub fn new(s: &'a str) -> Self {
         Self::new_filtered_opt(s, None)
     }
 
+    #[must_use]
     pub fn new_filtered(s: &'a str, accepted_sections: Vec<&'a str>) -> Self {
         Self::new_filtered_opt(s, Some(accepted_sections))
     }
 
+    #[must_use]
     pub fn with_section_capacity(mut self, section_capacity: usize) -> Self {
         self.section_capacity = section_capacity;
         self
     }
 
+    #[must_use]
     pub fn with_row_capacity(mut self, row_capacity: usize) -> Self {
         self.row_capacity = row_capacity;
         self
     }
 
+    #[must_use]
     pub fn with_array_capacity(mut self, array_capacity: usize) -> Self {
         self.array_capacity = array_capacity;
         self
@@ -100,7 +105,7 @@ impl<'a> Parser<'a> {
     }
 
     fn whitespace(&mut self) {
-        while let Some((_, '\t')) | Some((_, ' ')) = self.cur.peek() {
+        while let Some((_, '\t' | ' ')) = self.cur.peek() {
             self.cur.next();
         }
     }
@@ -188,7 +193,7 @@ impl<'a> Parser<'a> {
             Some((_, '[')) => self.finish_array(),
             Some((_, '{')) => self.finish_dictionary(),
             Some((_, ch)) if ch.is_ascii_digit() => self.number(),
-            Some((pos, 't')) | Some((pos, 'f')) => {
+            Some((pos, 't' | 'f')) => {
                 let pos = *pos;
                 self.boolean(pos)
             }
@@ -215,7 +220,6 @@ impl<'a> Parser<'a> {
                     }
                     ',' => {
                         self.cur.next();
-                        continue;
                     }
                     _ => match self.value() {
                         Some(v) => row.push(v),
@@ -244,13 +248,8 @@ impl<'a> Parser<'a> {
                         self.cur.next();
                         return Some(Value::Dictionary(map));
                     }
-                    ',' => {
+                    ',' | '\n' => {
                         self.cur.next();
-                        continue;
-                    }
-                    '\n' => {
-                        self.cur.next();
-                        continue;
                     }
                     _ => {
                         match self.entry() {
@@ -339,7 +338,7 @@ impl<'a> Parser<'a> {
         self.eat(ch)
     }
 
-    fn row(&mut self) -> Option<Element> {
+    fn row(&mut self) -> Element {
         let mut row = Vec::with_capacity(self.row_capacity);
 
         self.eat('|');
@@ -362,7 +361,7 @@ impl<'a> Parser<'a> {
             row.push(Value::String(self.cell()));
         }
 
-        Some(Element::Row(row))
+        Element::Row(row)
     }
 
     fn cell(&mut self) -> String {
@@ -394,7 +393,7 @@ impl<'a> Parser<'a> {
                 Element::Entry(key, value) => {
                     section.dictionary.insert(key, value);
                 }
-                _ => continue,
+                Element::Comment(_) => {}
             }
         }
 
@@ -408,17 +407,16 @@ impl<'a> Parser<'a> {
             _ => (),
         }
 
-        if !self.errors.is_empty() {
-            None
-        } else {
+        if self.errors.is_empty() {
             Some(map)
+        } else {
+            None
         }
     }
 
     fn is_section_accepted(&mut self, name: &str) -> Option<bool> {
-        let sections = match &mut self.accepted_sections {
-            Some(sections) => sections,
-            None => return Some(true),
+        let Some(sections) = &mut self.accepted_sections else {
+            return Some(true);
         };
 
         if sections.is_empty() {
@@ -467,10 +465,8 @@ impl<'a> Parser<'a> {
     }
 
     fn slice_while(&mut self, predicate: impl Fn(char) -> bool) -> Option<&str> {
-        self.cur.peek().cloned().and_then(|(start, c)| {
-            if !predicate(c) {
-                None
-            } else {
+        self.cur.peek().copied().and_then(|(start, c)| {
+            if predicate(c) {
                 self.cur.next();
 
                 while let Some(&(end, c)) = self.cur.peek() {
@@ -482,14 +478,16 @@ impl<'a> Parser<'a> {
                 }
 
                 Some(&self.input[start..])
+            } else {
+                None
             }
         })
     }
 
     fn add_error(&mut self, message: &str) {
         let mut it = self.cur.clone();
-        let lo = it.next().map(|p| p.0).unwrap_or(self.input.len());
-        let hi = it.next().map(|p| p.0).unwrap_or(self.input.len());
+        let lo = it.next().map_or(self.input.len(), |p| p.0);
+        let hi = it.next().map_or(self.input.len(), |p| p.0);
 
         self.errors.push(ParserError {
             lo,
@@ -507,7 +505,7 @@ pub struct ParserError {
 }
 
 impl error::Error for ParserError {
-    fn description(&self) -> &str {
+    fn description(&self) -> &'static str {
         "error parsing Ion"
     }
 }
@@ -658,7 +656,8 @@ mod tests {
 
     #[test]
     fn parse() {
-        let raw = r#"
+        let mut p = Parser::new(
+            r#"
                 [dict]
                 first = "first"
                 # comment
@@ -682,93 +681,56 @@ mod tests {
                 a=1
                 B=2
                 | this |
-            "#;
+            "#,
+        );
 
-        let mut p = Parser::new(raw);
-
-        assert_eq!(Some(Element::Section("dict".to_owned())), p.next());
-        assert_eq!(
-            Some(Entry("first".to_owned(), Value::String("first".to_owned()))),
-            p.next()
-        );
-        assert_eq!(Some(Comment(" comment\n".to_owned())), p.next());
-        assert_eq!(
-            Some(Entry(
-                "second".to_owned(),
-                Value::String("another".to_owned())
-            )),
-            p.next()
-        );
-        assert_eq!(
-            Some(Entry(
-                "whitespace".to_owned(),
-                Value::String("  ".to_owned())
-            )),
-            p.next()
-        );
-        assert_eq!(
-            Some(Entry("empty".to_owned(), Value::String("".to_owned()))),
-            p.next()
-        );
-        assert_eq!(
-            Some(Entry("some_bool".to_owned(), Value::Boolean(true))),
-            p.next()
-        );
-        assert_eq!(
-            Some(Entry(
+        let expected = vec![
+            Element::Section("dict".to_owned()),
+            Entry("first".to_owned(), Value::String("first".to_owned())),
+            Comment(" comment\n".to_owned()),
+            Entry("second".to_owned(), Value::String("another".to_owned())),
+            Entry("whitespace".to_owned(), Value::String("  ".to_owned())),
+            Entry("empty".to_owned(), Value::String(String::new())),
+            Entry("some_bool".to_owned(), Value::Boolean(true)),
+            Entry(
                 "ary".to_owned(),
                 Value::Array(vec![
                     Value::String("col1".to_owned()),
                     Value::Integer(2),
                     Value::String("col3".to_owned()),
-                    Value::Boolean(false)
-                ])
-            )),
-            p.next()
-        );
-
-        assert_eq!(Some(Element::Section("table".to_owned())), p.next());
-        assert_eq!(
-            Some(Row(vec![
+                    Value::Boolean(false),
+                ]),
+            ),
+            Element::Section("table".to_owned()),
+            Row(vec![
                 Value::String("abc".to_owned()),
-                Value::String("def".to_owned())
-            ])),
-            p.next()
-        );
-        assert_eq!(
-            Some(Row(vec![
+                Value::String("def".to_owned()),
+            ]),
+            Row(vec![
                 Value::String("---".to_owned()),
-                Value::String("---".to_owned())
-            ])),
-            p.next()
-        );
-        assert_eq!(
-            Some(Row(vec![
+                Value::String("---".to_owned()),
+            ]),
+            Row(vec![
                 Value::String("one".to_owned()),
-                Value::String("two".to_owned())
-            ])),
-            p.next()
-        );
-        assert_eq!(Some(Comment(" comment\n".to_owned())), p.next());
-        assert_eq!(
-            Some(Row(vec![
+                Value::String("two".to_owned()),
+            ]),
+            Comment(" comment\n".to_owned()),
+            Row(vec![
                 Value::String("1".to_owned()),
-                Value::String("2".to_owned())
-            ])),
-            p.next()
-        );
-        assert_eq!(
-            Some(Row(vec![
                 Value::String("2".to_owned()),
-                Value::String("3".to_owned())
-            ])),
-            p.next()
-        );
-        assert_eq!(Some(Element::Section("three".to_owned())), p.next());
-        assert_eq!(Some(Entry("a".to_owned(), Value::Integer(1))), p.next());
-        assert_eq!(Some(Entry("B".to_owned(), Value::Integer(2))), p.next());
-        assert_eq!(Some(Row(vec![Value::String("this".to_owned())])), p.next());
-        assert_eq!(None, p.next());
+            ]),
+            Row(vec![
+                Value::String("2".to_owned()),
+                Value::String("3".to_owned()),
+            ]),
+            Element::Section("three".to_owned()),
+            Entry("a".to_owned(), Value::Integer(1)),
+            Entry("B".to_owned(), Value::Integer(2)),
+            Row(vec![Value::String("this".to_owned())]),
+        ];
+
+        let actual: Vec<_> = p.by_ref().collect();
+        assert_eq!(expected, actual);
         assert_eq!(None, p.next());
     }
 
@@ -910,9 +872,9 @@ mod tests {
 
                     #[test]
                     fn then_returns_error() {
-                        let raw = r#"
+                        let raw = r"
                             key =
-                        "#;
+                        ";
                         let mut p = Parser::new(raw);
 
                         let actual = p.read();
@@ -926,10 +888,10 @@ mod tests {
 
                     #[test]
                     fn then_returns_array() {
-                        let raw = r#"
+                        let raw = r"
                             |1|2|
                             |3|
-                        "#;
+                        ";
                         let mut p = Parser::new(raw);
 
                         let actual = p.read().unwrap();
@@ -951,10 +913,10 @@ mod tests {
 
                     #[test]
                     fn then_returns_array_with_empty_strings_on_empty_cells() {
-                        let raw = r#"
+                        let raw = r"
                             |1||2|
                             |3|   |
-                        "#;
+                        ";
                         let mut p = Parser::new(raw);
 
                         let actual = p.read().unwrap();
@@ -963,12 +925,12 @@ mod tests {
                         let mut sect = Section::new();
                         sect.rows.push(vec![
                             Value::String("1".to_owned()),
-                            Value::String("".to_owned()),
+                            Value::String(String::new()),
                             Value::String("2".to_owned()),
                         ]);
                         sect.rows.push(vec![
                             Value::String("3".to_owned()),
-                            Value::String("".to_owned()),
+                            Value::String(String::new()),
                         ]);
                         expected.insert("root".to_owned(), sect);
                         assert_eq!(expected, actual);

@@ -54,14 +54,11 @@ impl fmt::Display for Value {
                                 f.write_char('\\')?;
                                 continue;
                             }
-                            (false, '\n') => f.write_str("\\n")?,
-                            (false, '\t') => f.write_str("\\t")?,
-                            (false, '|') => f.write_str("\\|")?,
+                            (false, '\n') | (true, 'n') => f.write_str("\\n")?,
+                            (false, '\t') | (true, 't') => f.write_str("\\t")?,
+                            (false | true, '|') => f.write_str("\\|")?,
 
                             (true, '\\') => f.write_char('\\')?,
-                            (true, 'n') => f.write_str("\\n")?,
-                            (true, 't') => f.write_str("\\t")?,
-                            (true, '|') => f.write_str("\\|")?,
 
                             (_, c) => f.write_char(c)?,
                         }
@@ -84,7 +81,7 @@ impl fmt::Display for Value {
                     if first {
                         first = false;
                     } else {
-                        f.write_str(", ")?
+                        f.write_str(", ")?;
                     }
 
                     write!(f, "{i:#}")?;
@@ -102,7 +99,7 @@ impl fmt::Display for Value {
                     if first {
                         first = false;
                     } else {
-                        f.write_str(", ")?
+                        f.write_str(", ")?;
                     }
 
                     k.fmt(f)?;

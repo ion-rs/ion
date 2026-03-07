@@ -1,9 +1,7 @@
-#![feature(test)]
-
 extern crate test;
 
 use ion::{Ion, Parser};
-use test::{black_box, Bencher};
+use test::{Bencher, black_box};
 
 const DEF_HOTEL_ON_START: &str = include_str!("data/def_hotel_on_start.ion");
 const DEF_HOTEL_ON_END: &str = include_str!("data/def_hotel_on_end.ion");
