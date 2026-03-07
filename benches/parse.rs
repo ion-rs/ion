@@ -1,34 +1,30 @@
-extern crate test;
-
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use ion::{Ion, Parser};
-use test::{Bencher, black_box};
+use std::str::FromStr;
 
 const DEF_HOTEL_ON_START: &str = include_str!("data/def_hotel_on_start.ion");
 const DEF_HOTEL_ON_END: &str = include_str!("data/def_hotel_on_end.ion");
+const FILTERED_SECTIONS: &[&str] = &["CONTRACT", "DEF.HOTEL"];
 
-mod parse {
-    use super::*;
-    use std::str::FromStr;
+fn parse_benches(c: &mut Criterion) {
+    let mut group = c.benchmark_group("parse");
 
-    #[bench]
-    fn section_on_start_of_ion(bencher: &mut Bencher) {
-        bencher.iter(|| {
+    group.bench_function("section_on_start_of_ion", |b| {
+        b.iter(|| {
             let result = Ion::from_str(DEF_HOTEL_ON_START);
             black_box(result.unwrap())
         })
-    }
+    });
 
-    #[bench]
-    fn section_on_end_of_ion(bencher: &mut Bencher) {
-        bencher.iter(|| {
+    group.bench_function("section_on_end_of_ion", |b| {
+        b.iter(|| {
             let result = Ion::from_str(DEF_HOTEL_ON_END);
             black_box(result.unwrap())
         })
-    }
+    });
 
-    #[bench]
-    fn section_on_start_of_ion_tuned_parser(bencher: &mut Bencher) {
-        bencher.iter(|| {
+    group.bench_function("section_on_start_of_ion_tuned_parser", |b| {
+        b.iter(|| {
             let result = Parser::new(DEF_HOTEL_ON_START)
                 .with_row_capacity(12)
                 .with_array_capacity(4)
@@ -37,11 +33,10 @@ mod parse {
 
             black_box(result.unwrap())
         })
-    }
+    });
 
-    #[bench]
-    fn section_on_start_of_ion_parser_no_prealloc(bencher: &mut Bencher) {
-        bencher.iter(|| {
+    group.bench_function("section_on_start_of_ion_parser_no_prealloc", |b| {
+        b.iter(|| {
             let result = Parser::new(DEF_HOTEL_ON_START)
                 .with_row_capacity(0)
                 .with_array_capacity(0)
@@ -50,11 +45,10 @@ mod parse {
 
             black_box(result.unwrap())
         })
-    }
+    });
 
-    #[bench]
-    fn section_on_end_of_ion_tuned_parser(bencher: &mut Bencher) {
-        bencher.iter(|| {
+    group.bench_function("section_on_end_of_ion_tuned_parser", |b| {
+        b.iter(|| {
             let result = Parser::new(DEF_HOTEL_ON_END)
                 .with_row_capacity(12)
                 .with_array_capacity(4)
@@ -63,11 +57,10 @@ mod parse {
 
             black_box(result.unwrap())
         })
-    }
+    });
 
-    #[bench]
-    fn section_on_end_of_ion_parser_no_prealloc(bencher: &mut Bencher) {
-        bencher.iter(|| {
+    group.bench_function("section_on_end_of_ion_parser_no_prealloc", |b| {
+        b.iter(|| {
             let result = Parser::new(DEF_HOTEL_ON_END)
                 .with_row_capacity(0)
                 .with_array_capacity(0)
@@ -76,27 +69,30 @@ mod parse {
 
             black_box(result.unwrap())
         })
-    }
+    });
+
+    group.finish();
 }
 
-mod parse_filtered {
-    use super::*;
+fn parse_filtered_benches(c: &mut Criterion) {
+    let mut group = c.benchmark_group("parse_filtered");
 
-    const FILTERED_SECTIONS: &[&str] = &["CONTRACT", "DEF.HOTEL"];
-
-    #[bench]
-    fn section_on_start_of_ion(bencher: &mut Bencher) {
-        bencher.iter(|| {
+    group.bench_function("section_on_start_of_ion", |b| {
+        b.iter(|| {
             let result = Ion::from_str_filtered(DEF_HOTEL_ON_START, FILTERED_SECTIONS.to_vec());
             black_box(result.unwrap())
         })
-    }
+    });
 
-    #[bench]
-    fn section_on_end_of_ion(bencher: &mut Bencher) {
-        bencher.iter(|| {
+    group.bench_function("section_on_end_of_ion", |b| {
+        b.iter(|| {
             let result = Ion::from_str_filtered(DEF_HOTEL_ON_END, FILTERED_SECTIONS.to_vec());
             black_box(result.unwrap())
         })
-    }
+    });
+
+    group.finish();
 }
+
+criterion_group!(benches, parse_benches, parse_filtered_benches);
+criterion_main!(benches);
