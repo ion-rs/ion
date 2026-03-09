@@ -192,6 +192,7 @@ impl<'a> Parser<'a> {
             Some((_, '"')) => self.finish_string(),
             Some((_, '[')) => self.finish_array(),
             Some((_, '{')) => self.finish_dictionary(),
+            Some((_, '-')) => self.number(),
             Some((_, ch)) if ch.is_ascii_digit() => self.number(),
             Some((pos, 't' | 'f')) => {
                 let pos = *pos;
@@ -292,7 +293,8 @@ impl<'a> Parser<'a> {
     }
 
     fn integer(&mut self) -> Option<String> {
-        self.slice_while(|ch| ch.is_ascii_digit())
+        // read optional leading '-' and digits until non-digit is encountered
+        self.slice_while(|ch| ch == '-' || ch.is_ascii_digit())
             .map(str::to_owned)
     }
 
@@ -557,61 +559,61 @@ mod tests {
     #[test]
     fn finish_string() {
         let mut p = Parser::new("\"foObar\"");
-        assert_eq!(Some("foObar"), p.finish_string().unwrap().as_str());
+        pretty_assertions::assert_eq!(Some("foObar"), p.finish_string().unwrap().as_str());
 
         let mut p = Parser::new("\"foObar");
-        assert_eq!(Some("foObar"), p.finish_string().unwrap().as_str());
+        pretty_assertions::assert_eq!(Some("foObar"), p.finish_string().unwrap().as_str());
 
         let mut p = Parser::new("\"\"");
-        assert_eq!(Some(""), p.finish_string().unwrap().as_str());
+        pretty_assertions::assert_eq!(Some(""), p.finish_string().unwrap().as_str());
 
         let mut p = Parser::new("");
-        assert_eq!(None, p.finish_string());
+        pretty_assertions::assert_eq!(None, p.finish_string());
     }
 
     #[test]
     fn finish_array() {
         let mut p = Parser::new("[\"a\"");
-        assert_eq!(None, p.finish_array());
+        pretty_assertions::assert_eq!(None, p.finish_array());
 
         let mut p = Parser::new("[");
-        assert_eq!(None, p.finish_array());
+        pretty_assertions::assert_eq!(None, p.finish_array());
 
         let mut p = Parser::new("[]");
-        assert_eq!(Some(Value::Array(vec![])), p.finish_array());
+        pretty_assertions::assert_eq!(Some(Value::Array(vec![])), p.finish_array());
 
         let mut p = Parser::new("[\"a\"]");
-        assert_eq!(Some(Value::new_string_array("a")), p.finish_array());
+        pretty_assertions::assert_eq!(Some(Value::new_string_array("a")), p.finish_array());
     }
 
     #[test]
     fn finish_dictionary() {
         let mut p = Parser::new("{");
-        assert_eq!(None, p.finish_dictionary());
+        pretty_assertions::assert_eq!(None, p.finish_dictionary());
 
         let mut p = Parser::new("{ foo");
-        assert_eq!(None, p.finish_dictionary());
+        pretty_assertions::assert_eq!(None, p.finish_dictionary());
 
         let mut p = Parser::new("{ foo = ");
-        assert_eq!(None, p.finish_dictionary());
+        pretty_assertions::assert_eq!(None, p.finish_dictionary());
 
         let mut p = Parser::new("{ foo = \"bar\"");
-        assert_eq!(None, p.finish_dictionary());
+        pretty_assertions::assert_eq!(None, p.finish_dictionary());
 
         let mut p = Parser::new("{ foo = [\"bar\"");
-        assert_eq!(None, p.finish_dictionary());
+        pretty_assertions::assert_eq!(None, p.finish_dictionary());
 
         let mut p = Parser::new("{ foo = [\"bar\"]");
-        assert_eq!(None, p.finish_dictionary());
+        pretty_assertions::assert_eq!(None, p.finish_dictionary());
 
         let mut p = Parser::new("{}");
-        assert_eq!(
+        pretty_assertions::assert_eq!(
             Some(Value::Dictionary(Dictionary::new())),
             p.finish_dictionary()
         );
 
         let mut p = Parser::new("{ foo = [\"bar\"] }");
-        assert_eq!(
+        pretty_assertions::assert_eq!(
             "{ foo = [ \"bar\" ] }",
             p.finish_dictionary().map(|d| format!("{d:#}")).unwrap()
         );
@@ -620,38 +622,38 @@ mod tests {
     #[test]
     fn slice_to_inc() {
         let mut p = Parser::new("foObar");
-        assert_eq!(Some("foOb"), p.slice_to_including('b'));
-        assert_eq!(Some((4, 'a')), p.cur.next());
+        pretty_assertions::assert_eq!(Some("foOb"), p.slice_to_including('b'));
+        pretty_assertions::assert_eq!(Some((4, 'a')), p.cur.next());
 
         let mut p = Parser::new("foObar");
-        assert_eq!(Some("f"), p.slice_to_including('f'));
-        assert_eq!(Some((1, 'o')), p.cur.next());
+        pretty_assertions::assert_eq!(Some("f"), p.slice_to_including('f'));
+        pretty_assertions::assert_eq!(Some((1, 'o')), p.cur.next());
     }
 
     #[test]
     fn slice_to_exc() {
         let mut p = Parser::new("foObar");
-        assert_eq!(Some("foO"), p.slice_to_excluding('b'));
-        assert_eq!(Some((4, 'a')), p.cur.next());
+        pretty_assertions::assert_eq!(Some("foO"), p.slice_to_excluding('b'));
+        pretty_assertions::assert_eq!(Some((4, 'a')), p.cur.next());
 
         let mut p = Parser::new("foObar");
-        assert_eq!(Some(""), p.slice_to_excluding('f'));
-        assert_eq!(Some((1, 'o')), p.cur.next());
+        pretty_assertions::assert_eq!(Some(""), p.slice_to_excluding('f'));
+        pretty_assertions::assert_eq!(Some((1, 'o')), p.cur.next());
 
         let mut p = Parser::new("f\\oobar");
-        assert_eq!(Some("f\\o"), p.slice_to_excluding('o'));
-        assert_eq!(Some((4, 'b')), p.cur.next());
+        pretty_assertions::assert_eq!(Some("f\\o"), p.slice_to_excluding('o'));
+        pretty_assertions::assert_eq!(Some((4, 'b')), p.cur.next());
     }
 
     #[test]
     fn slice_while() {
         let mut p = Parser::new("foObar");
-        assert_eq!(Some("foO"), p.slice_while(|c| c != 'b'));
-        assert_eq!(Some((3, 'b')), p.cur.next());
+        pretty_assertions::assert_eq!(Some("foO"), p.slice_while(|c| c != 'b'));
+        pretty_assertions::assert_eq!(Some((3, 'b')), p.cur.next());
 
         let mut p = Parser::new("foObar");
-        assert_eq!(None, p.slice_while(|c| c != 'f'));
-        assert_eq!(Some((0, 'f')), p.cur.next());
+        pretty_assertions::assert_eq!(None, p.slice_while(|c| c != 'f'));
+        pretty_assertions::assert_eq!(Some((0, 'f')), p.cur.next());
     }
 
     #[test]
@@ -730,28 +732,28 @@ mod tests {
         ];
 
         let actual: Vec<_> = p.by_ref().collect();
-        assert_eq!(expected, actual);
-        assert_eq!(None, p.next());
+        pretty_assertions::assert_eq!(expected, actual);
+        pretty_assertions::assert_eq!(None, p.next());
     }
 
     #[test]
     fn display() {
         let ary = Value::Array(vec![Value::Integer(1), Value::String("foo".to_owned())]);
-        assert_eq!(format!("{ary:#}"), "[ 1, \"foo\" ]");
+        pretty_assertions::assert_eq!(format!("{ary:#}"), "[ 1, \"foo\" ]");
     }
 
     #[test]
     fn replace_escapes() {
-        assert_eq!("a b", super::replace_escapes("a b", true));
-        assert_eq!("a b\\", super::replace_escapes(r"a b\", true));
-        assert_eq!("a\nb", super::replace_escapes(r"a\nb", true));
-        assert_eq!("a\tb", super::replace_escapes(r"a\tb", true));
-        assert_eq!("a\\b", super::replace_escapes(r"a\\b", true));
-        assert_eq!("a\\nb", super::replace_escapes(r"a\\nb", true));
-        assert_eq!("a|b", super::replace_escapes(r"a\|b", true));
-        assert_eq!("a\"b", super::replace_escapes("a\\\"b", true));
-        assert_eq!("a\\\"b", super::replace_escapes("a\\\"b", false));
-        assert_eq!("a\\n\\t\\\\b", super::replace_escapes(r"a\\n\\t\\\b", true));
+        pretty_assertions::assert_eq!("a b", super::replace_escapes("a b", true));
+        pretty_assertions::assert_eq!("a b\\", super::replace_escapes(r"a b\", true));
+        pretty_assertions::assert_eq!("a\nb", super::replace_escapes(r"a\nb", true));
+        pretty_assertions::assert_eq!("a\tb", super::replace_escapes(r"a\tb", true));
+        pretty_assertions::assert_eq!("a\\b", super::replace_escapes(r"a\\b", true));
+        pretty_assertions::assert_eq!("a\\nb", super::replace_escapes(r"a\\nb", true));
+        pretty_assertions::assert_eq!("a|b", super::replace_escapes(r"a\|b", true));
+        pretty_assertions::assert_eq!("a\"b", super::replace_escapes("a\\\"b", true));
+        pretty_assertions::assert_eq!("a\\\"b", super::replace_escapes("a\\\"b", false));
+        pretty_assertions::assert_eq!("a\\n\\t\\\\b", super::replace_escapes(r"a\\n\\t\\\b", true));
     }
 
     mod read {
@@ -773,7 +775,7 @@ mod tests {
                         "#;
                         let mut p = Parser::new(raw);
 
-                        let actual = p.read().unwrap();
+                        let actual = p.read().expect("Failed parser read");
 
                         let mut expected = BTreeMap::new();
                         let mut section = Section::new();
@@ -781,7 +783,7 @@ mod tests {
                             .dictionary
                             .insert("foo".to_owned(), Value::String("bar".to_owned()));
                         expected.insert("root".to_owned(), section);
-                        assert_eq!(expected, actual);
+                        pretty_assertions::assert_eq!(expected, actual);
                     }
                 }
 
@@ -795,7 +797,7 @@ mod tests {
                         "#;
                         let mut p = Parser::new(raw);
 
-                        let actual = p.read().unwrap();
+                        let actual = p.read().expect("Failed parser read");
 
                         let mut expected = BTreeMap::new();
                         let mut section = Section::new();
@@ -807,7 +809,7 @@ mod tests {
                             .dictionary
                             .insert("arr".to_owned(), Value::Array(array));
                         expected.insert("root".to_owned(), section);
-                        assert_eq!(expected, actual);
+                        pretty_assertions::assert_eq!(expected, actual);
                     }
                 }
 
@@ -821,7 +823,7 @@ mod tests {
                         "#;
                         let mut p = Parser::new(raw);
 
-                        let actual = p.read().unwrap();
+                        let actual = p.read().expect("Failed parser read");
 
                         let mut expected = BTreeMap::new();
                         let mut section = Section::new();
@@ -831,7 +833,7 @@ mod tests {
                             .dictionary
                             .insert("ndict".to_owned(), Value::Dictionary(dict));
                         expected.insert("root".to_owned(), section);
-                        assert_eq!(expected, actual);
+                        pretty_assertions::assert_eq!(expected, actual);
                     }
                 }
 
@@ -848,7 +850,7 @@ mod tests {
                         }"#;
                         let mut p = Parser::new(raw);
 
-                        let actual = p.read().unwrap();
+                        let actual = p.read().expect("Failed parser read");
 
                         let mut expected = BTreeMap::new();
                         let mut sect = Section::new();
@@ -863,7 +865,7 @@ mod tests {
                         sect.dictionary
                             .insert("R75042".to_owned(), Value::Dictionary(dict));
                         expected.insert("root".to_owned(), sect);
-                        assert_eq!(expected, actual);
+                        pretty_assertions::assert_eq!(expected, actual);
                     }
                 }
 
@@ -879,7 +881,7 @@ mod tests {
 
                         let actual = p.read();
 
-                        assert_eq!(None, actual);
+                        pretty_assertions::assert_eq!(None, actual);
                     }
                 }
 
@@ -894,7 +896,7 @@ mod tests {
                         ";
                         let mut p = Parser::new(raw);
 
-                        let actual = p.read().unwrap();
+                        let actual = p.read().expect("Failed parser read");
 
                         let mut expected = BTreeMap::new();
                         let mut sect = Section::new();
@@ -904,7 +906,7 @@ mod tests {
                         ]);
                         sect.rows.push(vec![Value::String("3".to_owned())]);
                         expected.insert("root".to_owned(), sect);
-                        assert_eq!(expected, actual);
+                        pretty_assertions::assert_eq!(expected, actual);
                     }
                 }
 
@@ -919,7 +921,7 @@ mod tests {
                         ";
                         let mut p = Parser::new(raw);
 
-                        let actual = p.read().unwrap();
+                        let actual = p.read().expect("Failed parser read");
 
                         let mut expected = BTreeMap::new();
                         let mut sect = Section::new();
@@ -933,7 +935,34 @@ mod tests {
                             Value::String(String::new()),
                         ]);
                         expected.insert("root".to_owned(), sect);
-                        assert_eq!(expected, actual);
+                        pretty_assertions::assert_eq!(expected, actual);
+                    }
+                }
+
+                mod and_root_section_has_dictionary_with_negative_numbers {
+                    use super::*;
+
+                    #[test]
+                    fn then_returns_dictionary() {
+                        let raw = r"
+                            fee_negated = -10.00
+                            discount = -5
+                        ";
+
+                        let mut p = Parser::new(raw);
+
+                        let actual = p.read().expect("Failed parser read");
+
+                        let mut expected = BTreeMap::new();
+                        let mut section = Section::new();
+                        section
+                            .dictionary
+                            .insert("fee_negated".to_owned(), Value::Float(-10.0));
+                        section
+                            .dictionary
+                            .insert("discount".to_owned(), Value::Integer(-5));
+                        expected.insert("root".to_owned(), section);
+                        pretty_assertions::assert_eq!(expected, actual);
                     }
                 }
             }
@@ -977,7 +1006,7 @@ mod tests {
                         };
 
                         let mut p = Parser::new(raw);
-                        assert_eq!(expected, p.read().unwrap());
+                        pretty_assertions::assert_eq!(expected, p.read().unwrap());
                     }
                 }
 
@@ -996,7 +1025,7 @@ mod tests {
                         "#;
                         let mut p = Parser::new(raw);
 
-                        let actual = p.read().unwrap();
+                        let actual = p.read().expect("Failed parser read");
 
                         let mut expected = BTreeMap::new();
                         let mut section = Section::new();
@@ -1008,7 +1037,7 @@ mod tests {
                             Value::String("2col2".to_string()),
                         ]);
                         expected.insert("SECTION".to_owned(), section);
-                        assert_eq!(expected, actual);
+                        pretty_assertions::assert_eq!(expected, actual);
                     }
                 }
             }
@@ -1031,10 +1060,10 @@ mod tests {
                         "#;
                         let mut p = Parser::new_filtered(raw, vec!["ACCEPTED"]);
 
-                        let actual = p.read().unwrap();
+                        let actual = p.read().expect("Failed parser read");
 
                         let expected = BTreeMap::new();
-                        assert_eq!(expected, actual);
+                        pretty_assertions::assert_eq!(expected, actual);
                     }
                 }
 
@@ -1052,7 +1081,7 @@ mod tests {
                         "#;
                         let mut p = Parser::new_filtered(raw, vec!["ACCEPTED"]);
 
-                        let actual = p.read().unwrap();
+                        let actual = p.read().expect("Failed parser read");
 
                         let mut expected = BTreeMap::new();
                         let mut section = Section::new();
@@ -1064,7 +1093,7 @@ mod tests {
                             Value::String("col2".to_string()),
                         ]);
                         expected.insert("ACCEPTED".to_owned(), section);
-                        assert_eq!(expected, actual);
+                        pretty_assertions::assert_eq!(expected, actual);
                     }
                 }
 
@@ -1082,10 +1111,10 @@ mod tests {
                         "#;
                         let mut p = Parser::new_filtered(raw, vec!["ACCEPTED"]);
 
-                        let actual = p.read().unwrap();
+                        let actual = p.read().expect("Failed parser read");
 
                         let expected = BTreeMap::new();
-                        assert_eq!(expected, actual);
+                        pretty_assertions::assert_eq!(expected, actual);
                     }
                 }
             }
@@ -1105,7 +1134,7 @@ mod tests {
                         "#;
                         let mut p = Parser::new_filtered(raw, vec!["ACCEPTED"]);
 
-                        let actual = p.read().unwrap();
+                        let actual = p.read().expect("Failed parser read");
 
                         let mut expected = BTreeMap::new();
                         let mut section = Section::new();
@@ -1117,7 +1146,7 @@ mod tests {
                             Value::String("col2".to_string()),
                         ]);
                         expected.insert("ACCEPTED".to_owned(), section);
-                        assert_eq!(expected, actual);
+                        pretty_assertions::assert_eq!(expected, actual);
                     }
                 }
 
@@ -1136,7 +1165,7 @@ mod tests {
                         "#;
                         let mut p = Parser::new_filtered(raw, vec!["ACCEPTED"]);
 
-                        let actual = p.read().unwrap();
+                        let actual = p.read().expect("Failed parser read");
 
                         let mut expected = BTreeMap::new();
                         let mut section = Section::new();
@@ -1148,7 +1177,7 @@ mod tests {
                             Value::String("col2".to_string()),
                         ]);
                         expected.insert("ACCEPTED".to_owned(), section);
-                        assert_eq!(expected, actual);
+                        pretty_assertions::assert_eq!(expected, actual);
                     }
                 }
 
@@ -1170,7 +1199,7 @@ mod tests {
                             "#;
                             let mut p = Parser::new_filtered(raw, vec!["ACCEPTED"]);
 
-                            let actual = p.read().unwrap();
+                            let actual = p.read().expect("Failed parser read");
 
                             let mut expected = BTreeMap::new();
                             let mut section = Section::new();
@@ -1182,7 +1211,7 @@ mod tests {
                                 Value::String("1col2".to_string()),
                             ]);
                             expected.insert("ACCEPTED".to_owned(), section);
-                            assert_eq!(expected, actual);
+                            pretty_assertions::assert_eq!(expected, actual);
                         }
                     }
 
@@ -1201,7 +1230,7 @@ mod tests {
                             "#;
                             let mut p = Parser::new_filtered(raw, vec!["ACCEPTED", "ANOTHER"]);
 
-                            let actual = p.read().unwrap();
+                            let actual = p.read().expect("Failed parser read");
 
                             let mut expected = BTreeMap::new();
                             let mut section = Section::new();
@@ -1213,7 +1242,7 @@ mod tests {
                                 Value::String("1col2".to_string()),
                             ]);
                             expected.insert("ACCEPTED".to_owned(), section);
-                            assert_eq!(expected, actual);
+                            pretty_assertions::assert_eq!(expected, actual);
                         }
                     }
                 }
@@ -1234,10 +1263,10 @@ mod tests {
                         "#;
                         let mut p = Parser::new_filtered(raw, vec!["ACCEPTED"]);
 
-                        let actual = p.read().unwrap();
+                        let actual = p.read().expect("Failed parser read");
 
                         let expected = BTreeMap::new();
-                        assert_eq!(expected, actual);
+                        pretty_assertions::assert_eq!(expected, actual);
                     }
                 }
 
@@ -1256,7 +1285,7 @@ mod tests {
                         "#;
                         let mut p = Parser::new_filtered(raw, vec!["ACCEPTED"]);
 
-                        let actual = p.read().unwrap();
+                        let actual = p.read().expect("Failed parser read");
 
                         let mut expected = BTreeMap::new();
                         let mut section = Section::new();
@@ -1268,7 +1297,7 @@ mod tests {
                             Value::String("col2".to_string()),
                         ]);
                         expected.insert("ACCEPTED".to_owned(), section);
-                        assert_eq!(expected, actual);
+                        pretty_assertions::assert_eq!(expected, actual);
                     }
                 }
             }
