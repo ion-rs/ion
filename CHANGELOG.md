@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Add support for optional leading `-` in dictionary numeric values
+- Switch benchmarks from nightly `test::Bencher` to stable `criterion`
+- Update crate to Rust edition 2024
+- Fix clippy warnings for Rust 1.94
+- Add `Ion::get_key_value`
+
 ## 0.9.1
 
 - Fixed a couple of formatting edge-cases
@@ -41,4 +49,3 @@
 ## 0.7.1
 
 - Fix slice pattern for `rustc 1.12.0-nightly (2ad5ed07f 2016-07-08)`
-
