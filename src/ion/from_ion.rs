@@ -73,49 +73,104 @@ impl FromIon<Value> for bool {
 #[cfg(test)]
 mod tests {
     use crate::ion::{FromIon, Section, Value};
+    use pretty_assertions::assert_eq;
     use std::str::FromStr;
+    use std::sync::LazyLock;
+    use test_case::test_case;
 
-    #[test]
-    fn string() {
-        let v = Value::String("foo".to_owned());
-        let s = String::from_ion(&v).unwrap();
-        assert_eq!("foo", s);
-
-        let s: String = v.from_ion().unwrap();
-        assert_eq!("foo", s);
+    #[derive(Debug)]
+    struct StringTestCase {
+        value: Value,
+        expected: &'static str,
     }
 
-    #[test]
-    fn option_string() {
-        let v = Value::from_str("foo").unwrap();
-        let os: Option<String> = v.from_ion().unwrap();
-        assert_eq!(Some("foo".to_owned()), os);
-
-        let v = Value::from_str("").unwrap();
-        let os: Option<String> = v.from_ion().unwrap();
-        assert_eq!(None, os);
+    #[derive(Debug)]
+    struct OptionStringTestCase {
+        value: Value,
+        expected: Option<&'static str>,
     }
 
-    #[test]
-    fn u32() {
-        let v = Value::from_str("16").unwrap();
-        let u: u32 = v.from_ion().unwrap();
-        assert_eq!(16, u);
+    #[derive(Debug)]
+    struct U32TestCase {
+        value: Value,
+        expected: u32,
     }
 
-    #[test]
-    fn bool() {
-        let v = Value::from_str("true").unwrap();
-        let u: bool = v.from_ion().unwrap();
-        assert!(u);
+    #[derive(Debug)]
+    struct BoolTestCase {
+        value: Value,
+        expected: Result<bool, ()>,
+    }
 
-        let v = Value::from_str("false").unwrap();
-        let u: bool = v.from_ion().unwrap();
-        assert!(!u);
+    #[derive(Debug)]
+    struct SectionTestCase {
+        expected_a: u32,
+        expected_b: &'static str,
+    }
 
-        let v = Value::from_str("").unwrap();
-        let u: Result<bool, _> = v.from_ion();
-        assert!(u.is_err());
+    static STRING_CASE: LazyLock<StringTestCase> = LazyLock::new(|| StringTestCase {
+        value: Value::String("foo".to_owned()),
+        expected: "foo",
+    });
+    static OPTION_STRING_SOME_CASE: LazyLock<OptionStringTestCase> =
+        LazyLock::new(|| OptionStringTestCase {
+            value: Value::from_str("foo").unwrap(),
+            expected: Some("foo"),
+        });
+    static OPTION_STRING_NONE_CASE: LazyLock<OptionStringTestCase> =
+        LazyLock::new(|| OptionStringTestCase {
+            value: Value::from_str("").unwrap(),
+            expected: None,
+        });
+    static U32_CASE: LazyLock<U32TestCase> = LazyLock::new(|| U32TestCase {
+        value: Value::from_str("16").unwrap(),
+        expected: 16,
+    });
+    static BOOL_TRUE_CASE: LazyLock<BoolTestCase> = LazyLock::new(|| BoolTestCase {
+        value: Value::from_str("true").unwrap(),
+        expected: Ok(true),
+    });
+    static BOOL_FALSE_CASE: LazyLock<BoolTestCase> = LazyLock::new(|| BoolTestCase {
+        value: Value::from_str("false").unwrap(),
+        expected: Ok(false),
+    });
+    static BOOL_ERROR_CASE: LazyLock<BoolTestCase> = LazyLock::new(|| BoolTestCase {
+        value: Value::from_str("").unwrap(),
+        expected: Err(()),
+    });
+    static SECTION_CASE: LazyLock<SectionTestCase> = LazyLock::new(|| SectionTestCase {
+        expected_a: 1,
+        expected_b: "foo",
+    });
+
+    #[test_case(&*STRING_CASE; "string")]
+    fn string(case: &StringTestCase) {
+        let actual = String::from_ion(&case.value).unwrap();
+        assert_eq!(case.expected, actual);
+
+        let actual: String = case.value.from_ion().unwrap();
+        assert_eq!(case.expected, actual);
+    }
+
+    #[test_case(&*OPTION_STRING_SOME_CASE; "some")]
+    #[test_case(&*OPTION_STRING_NONE_CASE; "none")]
+    fn option_string(case: &OptionStringTestCase) {
+        let actual: Option<String> = case.value.from_ion().unwrap();
+        assert_eq!(case.expected.map(str::to_owned), actual);
+    }
+
+    #[test_case(&*U32_CASE; "u32")]
+    fn u32(case: &U32TestCase) {
+        let actual: u32 = case.value.from_ion().unwrap();
+        assert_eq!(case.expected, actual);
+    }
+
+    #[test_case(&*BOOL_TRUE_CASE; "bool_true")]
+    #[test_case(&*BOOL_FALSE_CASE; "bool_false")]
+    #[test_case(&*BOOL_ERROR_CASE; "error")]
+    fn bool(case: &BoolTestCase) {
+        let actual: Result<bool, _> = case.value.from_ion();
+        assert_eq!(case.expected, actual.map_err(|_| ()));
     }
 
     struct Foo {
@@ -134,11 +189,11 @@ mod tests {
         }
     }
 
-    #[test]
-    fn from_ion_section() {
+    #[test_case(&*SECTION_CASE; "section")]
+    fn from_ion_section(case: &SectionTestCase) {
         let section = Section::new();
         let foo: Foo = section.parse().unwrap();
-        assert_eq!(1, foo.a);
-        assert_eq!("foo", foo.b);
+        assert_eq!(case.expected_a, foo.a);
+        assert_eq!(case.expected_b, foo.b);
     }
 }

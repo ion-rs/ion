@@ -38,6 +38,9 @@ impl ParseRow for Row {
 #[cfg(test)]
 mod tests {
     use crate::ion::{FromRow, Value};
+    use pretty_assertions::assert_eq;
+    use std::sync::LazyLock;
+    use test_case::test_case;
 
     macro_rules! parse_next {
         ($row:expr, $err:expr) => {{
@@ -57,6 +60,12 @@ mod tests {
         bar: String,
     }
 
+    #[derive(Debug)]
+    struct TestCase {
+        row: Vec<Value>,
+        expected: Foo,
+    }
+
     impl FromRow for Foo {
         type Err = &'static str;
 
@@ -68,21 +77,20 @@ mod tests {
         }
     }
 
-    #[test]
-    fn from_row() {
-        let row: Vec<_> = "1|foo"
+    static FROM_ROW_CASE: LazyLock<TestCase> = LazyLock::new(|| TestCase {
+        row: "1|foo"
             .split('|')
             .map(|s| Value::String(s.to_owned()))
-            .collect();
+            .collect(),
+        expected: Foo {
+            foo: 1,
+            bar: "foo".to_owned(),
+        },
+    });
 
-        let foo = Foo::from_str_iter(row.iter()).unwrap();
-
-        assert_eq!(
-            Foo {
-                foo: 1,
-                bar: "foo".to_owned(),
-            },
-            foo
-        );
+    #[test_case(&*FROM_ROW_CASE; "parses row")]
+    fn from_row(case: &TestCase) {
+        let actual = Foo::from_str_iter(case.row.iter()).unwrap();
+        assert_eq!(case.expected, actual);
     }
 }

@@ -143,17 +143,38 @@ impl FromStr for Value {
 #[cfg(test)]
 mod tests {
     use crate::Value;
+    use pretty_assertions::assert_eq;
+    use std::sync::LazyLock;
+    use test_case::test_case;
 
-    #[test]
-    fn integer() {
-        let v: Value = "1".parse().unwrap();
-        assert_eq!(1, v.parse().unwrap());
+    #[derive(Debug)]
+    struct TestCase {
+        raw: &'static str,
+        expected_integer: Option<i64>,
+        expected_float: Option<f64>,
     }
 
-    #[test]
-    fn float() {
-        let v: Value = "4.0".parse().unwrap();
-        let parsed: f64 = v.parse().unwrap();
-        assert!((parsed - 4.0f64).abs() < f64::EPSILON);
+    static INTEGER_CASE: LazyLock<TestCase> = LazyLock::new(|| TestCase {
+        raw: "1",
+        expected_integer: Some(1),
+        expected_float: None,
+    });
+    static FLOAT_CASE: LazyLock<TestCase> = LazyLock::new(|| TestCase {
+        raw: "4.0",
+        expected_integer: None,
+        expected_float: Some(4.0),
+    });
+
+    #[test_case(&*INTEGER_CASE; "integer")]
+    fn integer(case: &TestCase) {
+        let value: Value = case.raw.parse().unwrap();
+        assert_eq!(case.expected_integer.unwrap(), value.parse().unwrap());
+    }
+
+    #[test_case(&*FLOAT_CASE; "float")]
+    fn float(case: &TestCase) {
+        let value: Value = case.raw.parse().unwrap();
+        let parsed: f64 = value.parse().unwrap();
+        assert!((case.expected_float.unwrap() - parsed).abs() < f64::EPSILON);
     }
 }

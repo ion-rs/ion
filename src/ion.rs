@@ -111,92 +111,93 @@ macro_rules! ion_filtered {
 #[cfg(test)]
 mod tests {
     use crate::{Ion, Value};
+    use pretty_assertions::assert_eq;
+    use std::sync::LazyLock;
+    use test_case::test_case;
 
-    #[test]
-    fn as_string() {
-        let v = Value::String("foo".into());
-        assert_eq!(Some(&"foo".into()), v.as_string());
-
-        let v = Value::Integer(1);
-        assert_eq!(None, v.as_string());
+    #[derive(Debug)]
+    struct ValueConversionTestCase {
+        value: Value,
+        expected_string: Option<&'static str>,
+        expected_boolean: Option<bool>,
+        expected_integer: Option<i64>,
+        expected_str: Option<&'static str>,
     }
 
-    #[test]
-    fn as_boolean() {
-        let v = Value::Boolean(true);
-        assert_eq!(Some(true), v.as_boolean());
-
-        let v = Value::Integer(1);
-        assert_eq!(None, v.as_boolean());
+    #[derive(Debug)]
+    struct RowCountTestCase {
+        raw: &'static str,
+        accepted_sections: Option<Vec<&'static str>>,
+        section: &'static str,
+        expected_rows: usize,
+        expected_missing_section: Option<&'static str>,
     }
 
-    #[test]
-    fn as_integer() {
-        let v = Value::Integer(1);
-        assert_eq!(Some(1), v.as_integer());
+    static STRING_VALUE_CASE: LazyLock<ValueConversionTestCase> =
+        LazyLock::new(|| ValueConversionTestCase {
+            value: Value::String("foo".into()),
+            expected_string: Some("foo"),
+            expected_boolean: None,
+            expected_integer: None,
+            expected_str: Some("foo"),
+        });
+    static BOOLEAN_VALUE_CASE: LazyLock<ValueConversionTestCase> =
+        LazyLock::new(|| ValueConversionTestCase {
+            value: Value::Boolean(true),
+            expected_string: None,
+            expected_boolean: Some(true),
+            expected_integer: None,
+            expected_str: None,
+        });
+    static INTEGER_VALUE_CASE: LazyLock<ValueConversionTestCase> =
+        LazyLock::new(|| ValueConversionTestCase {
+            value: Value::Integer(1),
+            expected_string: None,
+            expected_boolean: None,
+            expected_integer: Some(1),
+            expected_str: None,
+        });
 
-        let v = Value::String("foo".into());
-        assert_eq!(None, v.as_integer());
-    }
-
-    #[test]
-    fn as_str() {
-        let v = Value::String("foo".into());
-        assert_eq!(Some("foo"), v.as_str());
-
-        let v = Value::Integer(1);
-        assert_eq!(None, v.as_str());
-    }
-
-    #[test]
-    fn row_without_header() {
-        let ion = ion!(
-            r"
+    static ROWS_WITHOUT_HEADER_CASE: LazyLock<RowCountTestCase> =
+        LazyLock::new(|| RowCountTestCase {
+            raw: r"
             [FOO]
             |1||2|
             |1|   |2|
             |1|2|3|
-        "
-        );
-
-        let rows = ion.get("FOO").unwrap().rows_without_header();
-        assert!(rows.len() == 3);
-    }
-
-    #[test]
-    fn row_with_header() {
-        let ion = ion!(
-            r"
+        ",
+            accepted_sections: None,
+            section: "FOO",
+            expected_rows: 3,
+            expected_missing_section: None,
+        });
+    static ROWS_WITH_HEADER_CASE: LazyLock<RowCountTestCase> = LazyLock::new(|| RowCountTestCase {
+        raw: r"
             [FOO]
             | 1 | 2 | 3 |
             |---|---|---|
             |1||2|
             |1|   |2|
-        "
-        );
-
-        let rows = ion.get("FOO").unwrap().rows_without_header();
-        assert!(rows.len() == 2);
-    }
-
-    #[test]
-    fn no_rows_with_header() {
-        let ion = ion!(
-            r"
+        ",
+        accepted_sections: None,
+        section: "FOO",
+        expected_rows: 2,
+        expected_missing_section: None,
+    });
+    static NO_ROWS_WITH_HEADER_CASE: LazyLock<RowCountTestCase> =
+        LazyLock::new(|| RowCountTestCase {
+            raw: r"
             [FOO]
             | 1 | 2 | 3 |
             |---|---|---|
-        "
-        );
-
-        let rows = ion.get("FOO").unwrap().rows_without_header();
-        assert_eq!(0, rows.len());
-    }
-
-    #[test]
-    fn filtered_section() {
-        let ion = ion_filtered!(
-            r"
+        ",
+            accepted_sections: None,
+            section: "FOO",
+            expected_rows: 0,
+            expected_missing_section: None,
+        });
+    static FILTERED_SECTION_CASE: LazyLock<RowCountTestCase> = LazyLock::new(|| RowCountTestCase {
+        raw: r"
             [FOO]
             |1||2|
             |1|   |2|
@@ -204,11 +205,42 @@ mod tests {
             [BAR]
             |1||2|
         ",
-            vec!["FOO"]
-        );
+        accepted_sections: Some(vec!["FOO"]),
+        section: "FOO",
+        expected_rows: 3,
+        expected_missing_section: Some("BAR"),
+    });
 
-        let rows = ion.get("FOO").unwrap().rows_without_header();
-        assert_eq!(3, rows.len());
-        assert!(ion.get("BAR").is_none());
+    #[test_case(&*STRING_VALUE_CASE; "string")]
+    #[test_case(&*BOOLEAN_VALUE_CASE; "boolean")]
+    #[test_case(&*INTEGER_VALUE_CASE; "integer")]
+    fn value_accessors(case: &ValueConversionTestCase) {
+        assert_eq!(
+            case.expected_string.map(str::to_owned).as_ref(),
+            case.value.as_string()
+        );
+        assert_eq!(case.expected_boolean, case.value.as_boolean());
+        assert_eq!(case.expected_integer, case.value.as_integer());
+        assert_eq!(case.expected_str, case.value.as_str());
+    }
+
+    #[test_case(&*ROWS_WITHOUT_HEADER_CASE; "without header")]
+    #[test_case(&*ROWS_WITH_HEADER_CASE; "with header")]
+    #[test_case(&*NO_ROWS_WITH_HEADER_CASE; "header only")]
+    #[test_case(&*FILTERED_SECTION_CASE; "filtered section")]
+    fn rows_without_header(case: &RowCountTestCase) {
+        let ion = match &case.accepted_sections {
+            Some(accepted_sections) => {
+                Ion::from_str_filtered(case.raw, accepted_sections.clone()).unwrap()
+            }
+            None => case.raw.parse::<Ion>().unwrap(),
+        };
+
+        let rows = ion.get(case.section).unwrap().rows_without_header();
+        assert_eq!(case.expected_rows, rows.len());
+
+        if let Some(section) = case.expected_missing_section {
+            assert_eq!(None, ion.get(section));
+        }
     }
 }
