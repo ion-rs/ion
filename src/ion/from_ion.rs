@@ -103,6 +103,11 @@ mod tests {
     }
 
     #[derive(Debug)]
+    struct ErrorTestCase {
+        value: Value,
+    }
+
+    #[derive(Debug)]
     struct SectionTestCase {
         expected_a: u32,
         expected_b: &'static str,
@@ -138,6 +143,15 @@ mod tests {
         value: Value::from_str("").unwrap(),
         expected: Err(()),
     });
+    static STRING_ERROR_CASE: LazyLock<ErrorTestCase> = LazyLock::new(|| ErrorTestCase {
+        value: Value::Integer(1),
+    });
+    static OPTION_STRING_ERROR_CASE: LazyLock<ErrorTestCase> = LazyLock::new(|| ErrorTestCase {
+        value: Value::Boolean(true),
+    });
+    static U32_ERROR_CASE: LazyLock<ErrorTestCase> = LazyLock::new(|| ErrorTestCase {
+        value: Value::Boolean(true),
+    });
     static SECTION_CASE: LazyLock<SectionTestCase> = LazyLock::new(|| SectionTestCase {
         expected_a: 1,
         expected_b: "foo",
@@ -171,6 +185,24 @@ mod tests {
     fn bool(case: &BoolTestCase) {
         let actual: Result<bool, _> = case.value.from_ion();
         assert_eq!(case.expected, actual.map_err(|_| ()));
+    }
+
+    #[test_case(&*STRING_ERROR_CASE; "string from non-string")]
+    fn string_error(case: &ErrorTestCase) {
+        let actual = String::from_ion(&case.value);
+        assert!(actual.is_err());
+    }
+
+    #[test_case(&*OPTION_STRING_ERROR_CASE; "option string from non-string")]
+    fn option_string_error(case: &ErrorTestCase) {
+        let actual: Result<Option<String>, _> = case.value.from_ion();
+        assert!(actual.is_err());
+    }
+
+    #[test_case(&*U32_ERROR_CASE; "u32 from non-string")]
+    fn u32_error(case: &ErrorTestCase) {
+        let actual: Result<u32, _> = case.value.from_ion();
+        assert!(actual.is_err());
     }
 
     struct Foo {

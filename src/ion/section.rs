@@ -136,7 +136,7 @@ impl IntoIterator for Section {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Ion, Section, Value, ion};
+    use crate::{FromIon, Ion, IonError, Section, Value, ion};
     use pretty_assertions::assert_eq;
     use quickcheck::TestResult;
     use quickcheck_macros::quickcheck;
@@ -166,6 +166,15 @@ mod tests {
         expected_first_row: Vec<Value>,
         expected_rows: usize,
         use_rows_without_header: bool,
+    }
+
+    #[derive(Debug)]
+    struct SectionApiTestCase {
+        section: Section,
+        key: &'static str,
+        expected_value: Option<Value>,
+        expected_fetch_error: Option<&'static str>,
+        expected_iter_len: usize,
     }
 
     static ROWS_NO_HEADER: &str = r"
@@ -295,6 +304,51 @@ mod tests {
             expected_rows: 3,
             use_rows_without_header: false,
         });
+    static SECTION_API_PRESENT_CASE: LazyLock<SectionApiTestCase> = LazyLock::new(|| {
+        let mut section = Section::with_capacity(2);
+        section
+            .dictionary
+            .insert("name".to_owned(), Value::new_string("foo"));
+        section.rows = vec![
+            vec![Value::new_string("h1")],
+            vec![Value::new_string("---")],
+            vec![Value::new_string("row")],
+        ];
+        SectionApiTestCase {
+            section,
+            key: "name",
+            expected_value: Some(Value::new_string("foo")),
+            expected_fetch_error: None,
+            expected_iter_len: 1,
+        }
+    });
+    static SECTION_API_MISSING_CASE: LazyLock<SectionApiTestCase> = LazyLock::new(|| {
+        let mut section = Section::new();
+        section.rows = vec![vec![Value::new_string("row")]];
+        SectionApiTestCase {
+            section,
+            key: "missing",
+            expected_value: None,
+            expected_fetch_error: Some("missing"),
+            expected_iter_len: 1,
+        }
+    });
+
+    struct ParsedSectionName(String);
+
+    impl FromIon<Section> for ParsedSectionName {
+        type Err = ();
+
+        fn from_ion(section: &Section) -> Result<Self, Self::Err> {
+            Ok(Self(
+                section
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_owned(),
+            ))
+        }
+    }
 
     #[test_case(&*INTO_ITER_REF_CASE; "ref section without headers")]
     fn into_iter_ref(case: &IntoIterTestCase) {
@@ -381,6 +435,55 @@ mod tests {
         assert_eq!(case.expected_first_row.len(), first_row.len());
         assert_eq!(&case.expected_first_row, first_row);
         assert_eq!(case.expected_rows, section.rows_without_header().len());
+    }
+
+    #[test_case(&*SECTION_API_PRESENT_CASE; "section api present")]
+    #[test_case(&*SECTION_API_MISSING_CASE; "section api missing")]
+    fn section_api(case: &SectionApiTestCase) {
+        assert_eq!(case.expected_value.as_ref(), case.section.get(case.key));
+
+        let fetch = case.section.fetch(case.key);
+        match case.expected_fetch_error {
+            Some(expected) => match fetch {
+                Err(IonError::MissingValue(actual)) => assert_eq!(expected, actual),
+                other => panic!("unexpected fetch result: {other:?}"),
+            },
+            None => assert_eq!(case.expected_value.as_ref(), fetch.ok()),
+        }
+
+        let iter_rows: Vec<_> = case.section.iter().collect();
+        assert_eq!(case.expected_iter_len, iter_rows.len());
+    }
+
+    #[test]
+    fn section_get_mut_and_parse() {
+        let mut section = Section::new();
+        section
+            .dictionary
+            .insert("name".to_owned(), Value::new_string("foo"));
+
+        match section.get_mut("name") {
+            Some(Value::String(value)) => *value = "bar".to_owned(),
+            other => panic!("unexpected mutable value: {other:?}"),
+        }
+
+        assert_eq!(Some("bar"), section.get("name").and_then(Value::as_str));
+        let parsed: ParsedSectionName = section.parse().unwrap();
+        assert_eq!("bar", parsed.0);
+    }
+
+    #[test]
+    fn rows_without_header_requires_a_hyphen_only_row() {
+        let section = Section {
+            dictionary: std::collections::BTreeMap::default(),
+            rows: vec![
+                vec![Value::new_string("h1"), Value::new_string("h2")],
+                vec![Value::Integer(1), Value::new_string("---")],
+                vec![Value::new_string("row"), Value::new_string("value")],
+            ],
+        };
+
+        assert_eq!(3, section.rows_without_header().len());
     }
 
     #[quickcheck]

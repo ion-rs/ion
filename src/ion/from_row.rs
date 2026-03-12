@@ -37,7 +37,7 @@ impl ParseRow for Row {
 
 #[cfg(test)]
 mod tests {
-    use crate::ion::{FromRow, Value};
+    use crate::ion::{FromRow, ParseRow, Value};
     use pretty_assertions::assert_eq;
     use std::sync::LazyLock;
     use test_case::test_case;
@@ -66,6 +66,12 @@ mod tests {
         expected: Foo,
     }
 
+    #[derive(Debug)]
+    struct ErrorTestCase {
+        row: Vec<Value>,
+        expected_error: &'static str,
+    }
+
     impl FromRow for Foo {
         type Err = &'static str;
 
@@ -87,10 +93,36 @@ mod tests {
             bar: "foo".to_owned(),
         },
     });
+    static PARSE_ROW_CASE: LazyLock<TestCase> = LazyLock::new(|| TestCase {
+        row: "2|bar"
+            .split('|')
+            .map(|s| Value::String(s.to_owned()))
+            .collect(),
+        expected: Foo {
+            foo: 2,
+            bar: "bar".to_owned(),
+        },
+    });
+    static FROM_ROW_ERROR_CASE: LazyLock<ErrorTestCase> = LazyLock::new(|| ErrorTestCase {
+        row: vec![Value::String("oops".to_owned())],
+        expected_error: "foo",
+    });
 
     #[test_case(&*FROM_ROW_CASE; "parses row")]
     fn from_row(case: &TestCase) {
         let actual = Foo::from_str_iter(case.row.iter()).unwrap();
         assert_eq!(case.expected, actual);
+    }
+
+    #[test_case(&*PARSE_ROW_CASE; "parse row trait")]
+    fn parse_row(case: &TestCase) {
+        let actual: Foo = case.row.parse().unwrap();
+        assert_eq!(case.expected, actual);
+    }
+
+    #[test_case(&*FROM_ROW_ERROR_CASE; "from row error")]
+    fn from_row_error(case: &ErrorTestCase) {
+        let actual = Foo::from_str_iter(case.row.iter());
+        assert_eq!(Err(case.expected_error), actual);
     }
 }

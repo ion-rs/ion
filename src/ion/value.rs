@@ -142,39 +142,126 @@ impl FromStr for Value {
 
 #[cfg(test)]
 mod tests {
-    use crate::Value;
+    use crate::{Dictionary, Value};
     use pretty_assertions::assert_eq;
+    use std::collections::BTreeMap;
     use std::sync::LazyLock;
     use test_case::test_case;
 
     #[derive(Debug)]
-    struct TestCase {
+    struct ParseTestCase {
         raw: &'static str,
         expected_integer: Option<i64>,
         expected_float: Option<f64>,
     }
 
-    static INTEGER_CASE: LazyLock<TestCase> = LazyLock::new(|| TestCase {
+    #[derive(Debug)]
+    struct HelperTestCase {
+        value: Value,
+        expected_type: &'static str,
+        is_string: bool,
+        expected_string: Option<&'static str>,
+        expected_float: Option<f64>,
+        expected_array_len: Option<usize>,
+        expected_dictionary_lookup: Option<&'static str>,
+    }
+
+    static INTEGER_CASE: LazyLock<ParseTestCase> = LazyLock::new(|| ParseTestCase {
         raw: "1",
         expected_integer: Some(1),
         expected_float: None,
     });
-    static FLOAT_CASE: LazyLock<TestCase> = LazyLock::new(|| TestCase {
+    static FLOAT_CASE: LazyLock<ParseTestCase> = LazyLock::new(|| ParseTestCase {
         raw: "4.0",
         expected_integer: None,
         expected_float: Some(4.0),
     });
+    static STRING_HELPER_CASE: LazyLock<HelperTestCase> = LazyLock::new(|| HelperTestCase {
+        value: Value::new_string("foo"),
+        expected_type: "string",
+        is_string: true,
+        expected_string: Some("foo"),
+        expected_float: None,
+        expected_array_len: None,
+        expected_dictionary_lookup: None,
+    });
+    static ARRAY_HELPER_CASE: LazyLock<HelperTestCase> = LazyLock::new(|| HelperTestCase {
+        value: Value::new_string_array("foo"),
+        expected_type: "array",
+        is_string: false,
+        expected_string: None,
+        expected_float: None,
+        expected_array_len: Some(1),
+        expected_dictionary_lookup: None,
+    });
+    static FLOAT_HELPER_CASE: LazyLock<HelperTestCase> = LazyLock::new(|| HelperTestCase {
+        value: Value::Float(4.25),
+        expected_type: "float",
+        is_string: false,
+        expected_string: None,
+        expected_float: Some(4.25),
+        expected_array_len: None,
+        expected_dictionary_lookup: None,
+    });
+    static DICTIONARY_HELPER_CASE: LazyLock<HelperTestCase> = LazyLock::new(|| {
+        let dictionary = BTreeMap::from([("name".to_owned(), Value::new_string("foo"))]);
+        HelperTestCase {
+            value: Value::Dictionary(dictionary),
+            expected_type: "dictionary",
+            is_string: false,
+            expected_string: None,
+            expected_float: None,
+            expected_array_len: None,
+            expected_dictionary_lookup: Some("foo"),
+        }
+    });
 
     #[test_case(&*INTEGER_CASE; "integer")]
-    fn integer(case: &TestCase) {
+    fn integer(case: &ParseTestCase) {
         let value: Value = case.raw.parse().unwrap();
         assert_eq!(case.expected_integer.unwrap(), value.parse().unwrap());
     }
 
     #[test_case(&*FLOAT_CASE; "float")]
-    fn float(case: &TestCase) {
+    fn float(case: &ParseTestCase) {
         let value: Value = case.raw.parse().unwrap();
         let parsed: f64 = value.parse().unwrap();
         assert!((case.expected_float.unwrap() - parsed).abs() < f64::EPSILON);
+    }
+
+    #[test_case(&*STRING_HELPER_CASE; "string helpers")]
+    #[test_case(&*ARRAY_HELPER_CASE; "array helpers")]
+    #[test_case(&*FLOAT_HELPER_CASE; "float helpers")]
+    #[test_case(&*DICTIONARY_HELPER_CASE; "dictionary helpers")]
+    fn helpers(case: &HelperTestCase) {
+        assert_eq!(case.expected_type, case.value.type_str());
+        assert_eq!(case.is_string, case.value.is_string());
+        assert_eq!(case.expected_string, case.value.as_str());
+
+        match (case.expected_float, case.value.as_float()) {
+            (Some(expected), Some(actual)) => assert!((expected - actual).abs() < f64::EPSILON),
+            (None, None) => {}
+            _ => panic!("unexpected float result"),
+        }
+
+        assert_eq!(case.expected_array_len, case.value.as_array().map(Vec::len));
+        assert_eq!(
+            case.expected_dictionary_lookup,
+            case.value
+                .as_dictionary()
+                .and_then(|dictionary: &Dictionary| dictionary.get("name"))
+                .and_then(Value::as_str)
+        );
+        assert_eq!(
+            case.expected_dictionary_lookup,
+            case.value.get("name").and_then(Value::as_str)
+        );
+    }
+
+    #[test]
+    fn parse_uses_display_for_non_string_values() {
+        let value = Value::Integer(42);
+        let parsed: i64 = value.parse().unwrap();
+        assert_eq!(42, parsed);
     }
 }

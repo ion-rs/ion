@@ -110,8 +110,9 @@ macro_rules! ion_filtered {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Ion, Value};
+    use crate::{Ion, IonError, Section, Value};
     use pretty_assertions::assert_eq;
+    use std::collections::BTreeMap;
     use std::sync::LazyLock;
     use test_case::test_case;
 
@@ -131,6 +132,29 @@ mod tests {
         section: &'static str,
         expected_rows: usize,
         expected_missing_section: Option<&'static str>,
+    }
+
+    #[derive(Debug)]
+    struct IonApiTestCase {
+        ion: Ion,
+        key: &'static str,
+        expected_present: bool,
+        expected_missing_fetch: Option<&'static str>,
+        expected_iter_len: usize,
+    }
+
+    #[derive(Debug)]
+    struct IonParseErrorTestCase {
+        raw: &'static str,
+        accepted_sections: Option<Vec<&'static str>>,
+    }
+
+    fn section(entries: Vec<(&str, Value)>) -> Section {
+        let mut section = Section::new();
+        for (key, value) in entries {
+            section.dictionary.insert(key.to_owned(), value);
+        }
+        section
     }
 
     static STRING_VALUE_CASE: LazyLock<ValueConversionTestCase> =
@@ -210,6 +234,39 @@ mod tests {
         expected_rows: 3,
         expected_missing_section: Some("BAR"),
     });
+    static ION_API_PRESENT_CASE: LazyLock<IonApiTestCase> = LazyLock::new(|| {
+        let sections = BTreeMap::from([(
+            "FOO".to_owned(),
+            section(vec![("name", Value::new_string("foo"))]),
+        )]);
+        IonApiTestCase {
+            ion: Ion::new(sections),
+            key: "FOO",
+            expected_present: true,
+            expected_missing_fetch: None,
+            expected_iter_len: 1,
+        }
+    });
+    static ION_API_MISSING_CASE: LazyLock<IonApiTestCase> = LazyLock::new(|| {
+        let sections = BTreeMap::from([("FOO".to_owned(), section(vec![]))]);
+        IonApiTestCase {
+            ion: Ion::new(sections),
+            key: "BAR",
+            expected_present: false,
+            expected_missing_fetch: Some("BAR"),
+            expected_iter_len: 1,
+        }
+    });
+    static ION_PARSE_ERROR_CASE: LazyLock<IonParseErrorTestCase> =
+        LazyLock::new(|| IonParseErrorTestCase {
+            raw: "key =",
+            accepted_sections: None,
+        });
+    static ION_FILTERED_PARSE_ERROR_CASE: LazyLock<IonParseErrorTestCase> =
+        LazyLock::new(|| IonParseErrorTestCase {
+            raw: "[FOO]\nkey =\n",
+            accepted_sections: Some(vec!["FOO"]),
+        });
 
     #[test_case(&*STRING_VALUE_CASE; "string")]
     #[test_case(&*BOOLEAN_VALUE_CASE; "boolean")]
@@ -241,6 +298,69 @@ mod tests {
 
         if let Some(section) = case.expected_missing_section {
             assert_eq!(None, ion.get(section));
+        }
+    }
+
+    #[test_case(&*ION_API_PRESENT_CASE; "ion api present")]
+    #[test_case(&*ION_API_MISSING_CASE; "ion api missing")]
+    fn ion_api(case: &IonApiTestCase) {
+        assert_eq!(case.expected_present, case.ion.get(case.key).is_some());
+        assert_eq!(
+            case.expected_present,
+            case.ion.get_key_value(case.key).is_some()
+        );
+
+        let iterated: Vec<_> = case.ion.iter().collect();
+        assert_eq!(case.expected_iter_len, iterated.len());
+
+        match case.expected_missing_fetch {
+            Some(expected) => match case.ion.fetch(case.key) {
+                Err(IonError::MissingSection(actual)) => assert_eq!(expected, actual),
+                other => panic!("unexpected fetch result: {other:?}"),
+            },
+            None => assert!(case.ion.fetch(case.key).is_ok()),
+        }
+    }
+
+    #[test]
+    fn ion_get_mut_and_remove() {
+        let sections = BTreeMap::from([(
+            "FOO".to_owned(),
+            section(vec![("name", Value::new_string("foo"))]),
+        )]);
+        let mut ion = Ion::new(sections);
+
+        match ion.get_mut("FOO") {
+            Some(section) => {
+                section
+                    .dictionary
+                    .insert("name".to_owned(), Value::new_string("bar"));
+            }
+            None => panic!("expected section"),
+        }
+
+        assert_eq!(
+            Some("bar"),
+            ion.get("FOO")
+                .and_then(|section| section.get("name"))
+                .and_then(Value::as_str)
+        );
+
+        assert!(ion.remove("FOO").is_some());
+        assert_eq!(None, ion.remove("FOO"));
+    }
+
+    #[test_case(&*ION_PARSE_ERROR_CASE; "from_str parse error")]
+    #[test_case(&*ION_FILTERED_PARSE_ERROR_CASE; "from_str_filtered parse error")]
+    fn parse_errors(case: &IonParseErrorTestCase) {
+        let actual = match &case.accepted_sections {
+            Some(accepted_sections) => Ion::from_str_filtered(case.raw, accepted_sections.clone()),
+            None => case.raw.parse::<Ion>(),
+        };
+
+        match actual {
+            Err(IonError::ParserErrors(errors)) => assert!(!errors.is_empty()),
+            other => panic!("unexpected parse result: {other:?}"),
         }
     }
 }
