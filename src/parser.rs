@@ -594,6 +594,13 @@ mod tests {
     }
 
     #[derive(Debug)]
+    struct CommentTestCase {
+        raw: &'static str,
+        expected: Option<Element>,
+        next: Option<(usize, char)>,
+    }
+
+    #[derive(Debug)]
     struct DisplayTestCase {
         value: Value,
         expected: &'static str,
@@ -611,6 +618,28 @@ mod tests {
         raw: &'static str,
         accepted_sections: &'static [&'static str],
         expected: Option<BTreeMap<String, Section>>,
+    }
+
+    #[derive(Debug)]
+    struct ValueErrorTestCase {
+        raw: &'static str,
+        expected_error: &'static str,
+    }
+
+    #[derive(Debug)]
+    struct BooleanTestCase {
+        raw: &'static str,
+        start: usize,
+        expected: Option<Value>,
+        next: Option<(usize, char)>,
+    }
+
+    #[derive(Debug)]
+    struct FilterIterationTestCase {
+        raw: &'static str,
+        accepted_sections: &'static [&'static str],
+        expected_prefix: Vec<Element>,
+        expected_after_none: Option<Element>,
     }
 
     fn string(value: &str) -> Value {
@@ -827,6 +856,26 @@ mod tests {
                 Row(row(&["this"])),
             ],
         });
+    static PARSE_CRLF_CASE: LazyLock<ParseIteratorTestCase> =
+        LazyLock::new(|| ParseIteratorTestCase {
+            raw: "foo = \"bar\"\r\n# comment\r\nbaz = false\r\n",
+            expected: vec![
+                Entry("foo".to_owned(), string("bar")),
+                Comment(" comment\r\n".to_owned()),
+                Entry("baz".to_owned(), Value::Boolean(false)),
+            ],
+        });
+
+    static COMMENT_PRESENT_CASE: LazyLock<CommentTestCase> = LazyLock::new(|| CommentTestCase {
+        raw: "# comment\n",
+        expected: Some(Comment(" comment\n".to_owned())),
+        next: None,
+    });
+    static COMMENT_ABSENT_CASE: LazyLock<CommentTestCase> = LazyLock::new(|| CommentTestCase {
+        raw: "foo",
+        expected: None,
+        next: Some((0, 'f')),
+    });
 
     static DISPLAY_ARRAY: LazyLock<DisplayTestCase> = LazyLock::new(|| DisplayTestCase {
         value: array(vec![Value::Integer(1), string("foo")]),
@@ -1007,6 +1056,17 @@ mod tests {
             ),
         )])),
     });
+    static READ_ROOT_CRLF: LazyLock<ReadTestCase> = LazyLock::new(|| ReadTestCase {
+        raw: "foo = \"bar\"\r\nbaz = false\r\n",
+        accepted_sections: &[],
+        expected: Some(sections(vec![(
+            "root",
+            section(
+                vec![("foo", string("bar")), ("baz", Value::Boolean(false))],
+                vec![],
+            ),
+        )])),
+    });
     static READ_SECTION_ONCE: LazyLock<ReadTestCase> = LazyLock::new(|| ReadTestCase {
         raw: r#"
             [SECTION]
@@ -1174,6 +1234,32 @@ mod tests {
                 section(vec![("key", string("value"))], vec![row(&["col1", "col2"])]),
             )])),
         });
+    static VALUE_ERROR_INVALID_SCALAR: LazyLock<ValueErrorTestCase> =
+        LazyLock::new(|| ValueErrorTestCase {
+            raw: "?",
+            expected_error: "Cannot read a value",
+        });
+    static BOOLEAN_INVALID_LITERAL: LazyLock<BooleanTestCase> = LazyLock::new(|| BooleanTestCase {
+        raw: "truthy",
+        start: 0,
+        expected: None,
+        next: Some((0, 't')),
+    });
+    static FILTER_ITERATION_EXHAUSTS_ACCEPTED_SECTIONS: LazyLock<FilterIterationTestCase> =
+        LazyLock::new(|| FilterIterationTestCase {
+            raw: r#"
+                [ACCEPTED]
+                key = "value"
+                [FILTERED]
+                other = "ignored"
+            "#,
+            accepted_sections: &["ACCEPTED"],
+            expected_prefix: vec![
+                Element::Section("ACCEPTED".to_owned()),
+                Entry("key".to_owned(), string("value")),
+            ],
+            expected_after_none: Some(Entry("other".to_owned(), string("ignored"))),
+        });
 
     #[test_case(&*FINISH_STRING_COMPLETE; "complete")]
     #[test_case(&*FINISH_STRING_UNTERMINATED; "unterminated")]
@@ -1232,14 +1318,22 @@ mod tests {
         assert_eq!(case.next, parser.cur.next());
     }
 
-    #[test]
-    fn parse() {
-        let case = &*PARSE_MAIN_CASE;
+    #[test_case(&*PARSE_MAIN_CASE; "main document")]
+    #[test_case(&*PARSE_CRLF_CASE; "crlf document")]
+    fn parse(case: &ParseIteratorTestCase) {
         let mut parser = Parser::new(case.raw);
 
         let actual: Vec<_> = parser.by_ref().collect();
         assert_eq!(case.expected, actual);
         assert_eq!(None, parser.next());
+    }
+
+    #[test_case(&*COMMENT_PRESENT_CASE; "comment present")]
+    #[test_case(&*COMMENT_ABSENT_CASE; "comment absent")]
+    fn comment(case: &CommentTestCase) {
+        let mut parser = Parser::new(case.raw);
+        assert_eq!(case.expected, parser.comment());
+        assert_eq!(case.next, parser.cur.next());
     }
 
     #[test]
@@ -1273,6 +1367,7 @@ mod tests {
     #[test_case(&*READ_ROOT_ROWS; "root rows")]
     #[test_case(&*READ_ROOT_ROWS_WITH_EMPTY_CELLS; "root rows with empty cells")]
     #[test_case(&*READ_ROOT_NEGATIVE_NUMBERS; "root negative numbers")]
+    #[test_case(&*READ_ROOT_CRLF; "root crlf")]
     #[test_case(&*READ_SECTION_ONCE; "section once")]
     #[test_case(&*READ_SECTION_DUPLICATED; "section duplicated")]
     #[test_case(&*READ_FILTER_ROOT_ONLY; "filter root only")]
@@ -1292,5 +1387,29 @@ mod tests {
         };
 
         assert_eq!(case.expected, actual);
+    }
+
+    #[test_case(&*VALUE_ERROR_INVALID_SCALAR; "invalid scalar")]
+    fn value_error(case: &ValueErrorTestCase) {
+        let mut parser = Parser::new(case.raw);
+        assert_eq!(None, parser.value());
+        assert_eq!(1, parser.errors.len());
+        assert_eq!(case.expected_error, parser.errors[0].desc);
+    }
+
+    #[test_case(&*BOOLEAN_INVALID_LITERAL; "invalid boolean literal")]
+    fn boolean(case: &BooleanTestCase) {
+        let mut parser = Parser::new(case.raw);
+        assert_eq!(case.expected, parser.boolean(case.start));
+        assert_eq!(case.next, parser.cur.next());
+    }
+
+    #[test_case(&*FILTER_ITERATION_EXHAUSTS_ACCEPTED_SECTIONS; "accepted sections exhausted")]
+    fn filtered_iteration(case: &FilterIterationTestCase) {
+        let mut parser = Parser::new_filtered(case.raw, case.accepted_sections.to_vec());
+        assert_eq!(Some(&case.expected_prefix[0]), parser.next().as_ref());
+        assert_eq!(Some(&case.expected_prefix[1]), parser.next().as_ref());
+        assert_eq!(None, parser.next());
+        assert_eq!(case.expected_after_none, parser.next());
     }
 }
