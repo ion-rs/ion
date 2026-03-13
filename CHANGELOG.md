@@ -2,13 +2,31 @@
 
 ## Unreleased
 
+### Added
+
 - Add optional `dictionary-indexmap` feature to use `indexmap::IndexMap` for `Dictionary`
-- Add backend-specific tests and benchmarks for `BTreeMap` vs `IndexMap` dictionary ordering
+- Add `Ion::get_key_value`
+
+### Changed
+
 - Add support for optional leading `-` in dictionary numeric values
 - Switch benchmarks from nightly `test::Bencher` to stable `criterion`
 - Update crate to Rust edition 2024
+- Dictionary display and serialization order now depend on the selected backend
+  Default builds keep sorted `BTreeMap` behavior; `dictionary-indexmap` preserves insertion order
+
+### Tests
+
+- Expand unit and integration coverage across parser, display, `Ion`, `Section`, `Value`, `FromIon`, and `FromRow`
+- Add backend-specific tests for `BTreeMap` vs `IndexMap` dictionary ordering
+
+### Benchmarks
+
+- Add backend-specific benchmarks for `BTreeMap` vs `IndexMap` dictionary ordering and serialization behavior
+
+### Maintenance
+
 - Fix clippy warnings for Rust 1.94
-- Add `Ion::get_key_value`
 
 ## 0.9.1
 

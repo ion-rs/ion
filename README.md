@@ -14,12 +14,97 @@
 
 `ion` is a sophisticated parser for `*.ion` files, crafted in Rust to handle a versatile data format. This format is ideal for configurations and structured data, supporting a diverse range of types like `String`, `Integer (i64)`, `Float (f64)`, `Boolean`, `Arrays`, and `Dictionary`.
 
+## Installation
+
+Default backend:
+
+```toml
+[dependencies]
+ion = "0.9.1"
+```
+
+Insertion-ordered dictionaries with `IndexMap`:
+
+```toml
+[dependencies]
+ion = { version = "0.9.1", features = ["dictionary-indexmap"] }
+```
+
+## Why ion?
+
+- Parse mixed section-based documents that combine key/value dictionaries and table rows.
+- Round-trip Ion documents into a stable textual representation.
+- Choose sorted dictionary output by default, or insertion-ordered dictionaries with `dictionary-indexmap`.
+
 ## Features
 
 - **Diverse Data Type Support**: Capable of parsing Strings, Integers, Floats, Booleans, Arrays, and Dictionaries.
 - **Section-based Organization**: Facilitates data organization in distinct sections with varied structures.
 - **Efficient Parsing**: Optimized for performance and reliability in parsing complex Ion documents.
 - **Optional Dictionary Backend**: Uses `BTreeMap` by default, with an optional `dictionary-indexmap` feature for insertion-ordered dictionaries.
+
+## Backend Choice
+
+`Dictionary` uses:
+
+- `BTreeMap` by default
+  Best when you want deterministic sorted output and slightly better performance in most parser paths.
+- `IndexMap` with `dictionary-indexmap`
+  Best when you want dictionary iteration and display order to match insertion order.
+
+This choice affects dictionary ordering in:
+
+- `Value::Dictionary`
+- section field serialization
+- `Ion::to_string()`
+
+Section names are still stored separately and remain ordered independently from the dictionary backend.
+
+## Rust Example
+
+```rust
+use ion::Ion;
+
+let raw = r#"
+    [HOTEL]
+    name = "HOTEL"
+    markets = ["PL", "DE"]
+
+    [ROOMS]
+    | code | capacity |
+    |------|----------|
+    | DBL  | 2        |
+"#;
+
+let ion: Ion = raw.parse().unwrap();
+
+let hotel = ion.get("HOTEL").unwrap();
+assert_eq!(
+    Some("HOTEL"),
+    hotel.get("name").and_then(|value| value.as_str())
+);
+
+let rooms = ion.get("ROOMS").unwrap();
+assert_eq!(1, rooms.rows_without_header().len());
+```
+
+Filtered parsing:
+
+```rust
+use ion::Ion;
+
+let raw = r#"
+    [IGNORED]
+    key = "value"
+
+    [KEPT]
+    key = "kept"
+"#;
+
+let ion = Ion::from_str_filtered(raw, vec!["KEPT"]).unwrap();
+assert!(ion.get("IGNORED").is_none());
+assert!(ion.get("KEPT").is_some());
+```
 
 ## Benchmark Results
 
@@ -33,6 +118,8 @@ The table below compares Criterion's middle estimate from:
 
 - `cargo bench --bench parse`
 - `cargo bench --bench parse --features dictionary-indexmap`
+
+These measurements are directional, not universal. Actual results depend on the document shape, dictionary density, machine, and compiler version.
 
 |                  Benchmark                   |  `btree`  | `indexmap` |       Delta       |
 |----------------------------------------------|-----------|------------|-------------------|
