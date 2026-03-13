@@ -1,4 +1,4 @@
-use crate::{Section, Value};
+use crate::{Dictionary, Section, Value};
 use std::collections::BTreeMap;
 use std::iter::Peekable;
 use std::{error, fmt, str};
@@ -238,7 +238,7 @@ impl<'a> Parser<'a> {
 
     fn finish_dictionary(&mut self) -> Option<Value> {
         self.cur.next();
-        let mut map = BTreeMap::new();
+        let mut map = Dictionary::new();
 
         loop {
             self.whitespace();

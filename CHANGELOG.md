@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add optional `dictionary-indexmap` feature to use `indexmap::IndexMap` for `Dictionary`
+- Add backend-specific tests and benchmarks for `BTreeMap` vs `IndexMap` dictionary ordering
 - Add support for optional leading `-` in dictionary numeric values
 - Switch benchmarks from nightly `test::Bencher` to stable `criterion`
 - Update crate to Rust edition 2024

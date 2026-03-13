@@ -149,6 +149,12 @@ mod tests {
         accepted_sections: Option<Vec<&'static str>>,
     }
 
+    #[derive(Debug)]
+    struct OrderingTestCase {
+        raw: &'static str,
+        expected: &'static str,
+    }
+
     fn section(entries: Vec<(&str, Value)>) -> Section {
         let mut section = Section::new();
         for (key, value) in entries {
@@ -267,6 +273,18 @@ mod tests {
             raw: "[FOO]\nkey =\n",
             accepted_sections: Some(vec!["FOO"]),
         });
+    static ORDERING_CASE: LazyLock<OrderingTestCase> = LazyLock::new(|| OrderingTestCase {
+        raw: r"
+            [ORDER]
+            b = 1
+            a = 2
+        ",
+        expected: if cfg!(feature = "dictionary-indexmap") {
+            "[ORDER]\nb = 1\na = 2\n\n"
+        } else {
+            "[ORDER]\na = 2\nb = 1\n\n"
+        },
+    });
 
     #[test_case(&*STRING_VALUE_CASE; "string")]
     #[test_case(&*BOOLEAN_VALUE_CASE; "boolean")]
@@ -362,5 +380,12 @@ mod tests {
             Err(IonError::ParserErrors(errors)) => assert!(!errors.is_empty()),
             other => panic!("unexpected parse result: {other:?}"),
         }
+    }
+
+    #[test_case(&*ORDERING_CASE; "dictionary ordering depends on backend")]
+    fn dictionary_ordering(case: &OrderingTestCase) {
+        let ion = case.raw.parse::<Ion>().unwrap();
+        let actual = ion.to_string();
+        assert_eq!(case.expected, actual);
     }
 }

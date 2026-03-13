@@ -4,7 +4,10 @@ mod parser;
 
 pub use self::ion::*;
 pub use self::parser::*;
-use std::collections::BTreeMap;
 
-pub type Dictionary = BTreeMap<String, Value>;
+#[cfg(feature = "dictionary-indexmap")]
+pub type Dictionary = indexmap::IndexMap<String, Value>;
+#[cfg(not(feature = "dictionary-indexmap"))]
+pub type Dictionary = std::collections::BTreeMap<String, Value>;
+
 pub type Row = Vec<Value>;

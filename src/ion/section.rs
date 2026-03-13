@@ -136,7 +136,7 @@ impl IntoIterator for Section {
 
 #[cfg(test)]
 mod tests {
-    use crate::{FromIon, Ion, IonError, Section, Value, ion};
+    use crate::{Dictionary, FromIon, Ion, IonError, Section, Value, ion};
     use pretty_assertions::assert_eq;
     use quickcheck::TestResult;
     use quickcheck_macros::quickcheck;
@@ -475,7 +475,7 @@ mod tests {
     #[test]
     fn rows_without_header_requires_a_hyphen_only_row() {
         let section = Section {
-            dictionary: std::collections::BTreeMap::default(),
+            dictionary: Dictionary::default(),
             rows: vec![
                 vec![Value::new_string("h1"), Value::new_string("h2")],
                 vec![Value::Integer(1), Value::new_string("---")],

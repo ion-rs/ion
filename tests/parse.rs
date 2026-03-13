@@ -2,8 +2,26 @@ use ion::{Ion, ion};
 use std::fs;
 use std::path::Path;
 
+#[cfg(feature = "dictionary-indexmap")]
+const TEST_ION_EXPECTED_PATH: &str = "tests/expected/test.indexmap.ion";
+#[cfg(not(feature = "dictionary-indexmap"))]
+const TEST_ION_EXPECTED_PATH: &str = "tests/expected/test.ion";
+
+#[cfg(feature = "dictionary-indexmap")]
+const HOTEL_ION_EXPECTED_PATH: &str = "tests/expected/hotel.indexmap.ion";
+#[cfg(not(feature = "dictionary-indexmap"))]
+const HOTEL_ION_EXPECTED_PATH: &str = "tests/expected/hotel.ion";
+
 fn read_ion(path: impl AsRef<Path>) -> ion::Ion {
     ion!(fs::read_to_string(path).unwrap())
+}
+
+fn read_expected_ion(path: impl AsRef<Path>) -> String {
+    let mut expected = fs::read_to_string(path).unwrap();
+    if !expected.ends_with("\n\n") {
+        expected.push('\n');
+    }
+    expected
 }
 
 fn read_err_ion(path: impl AsRef<Path>) -> ion::IonError {
@@ -16,7 +34,7 @@ fn read_err_ion(path: impl AsRef<Path>) -> ion::IonError {
 #[test]
 fn test_ion() {
     let ion = read_ion("tests/data/test.ion");
-    let expected = fs::read_to_string("tests/expected/test.ion").unwrap();
+    let expected = read_expected_ion(TEST_ION_EXPECTED_PATH);
 
     assert_eq!(expected, ion.to_string());
 }
@@ -24,7 +42,7 @@ fn test_ion() {
 #[test]
 fn hotel_ion() {
     let ion = read_ion("tests/data/hotel.ion");
-    let expected = fs::read_to_string("tests/expected/hotel.ion").unwrap();
+    let expected = read_expected_ion(HOTEL_ION_EXPECTED_PATH);
 
     assert_eq!(expected, ion.to_string());
 }

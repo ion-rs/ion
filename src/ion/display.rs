@@ -119,7 +119,6 @@ mod tests {
     use super::*;
     use indoc::indoc;
     use pretty_assertions::assert_eq;
-    use std::collections::BTreeMap;
     use std::sync::LazyLock;
     use test_case::test_case;
 
@@ -155,6 +154,14 @@ mod tests {
         section
     }
 
+    fn dictionary(entries: Vec<(&str, Value)>) -> Value {
+        let mut dictionary = crate::Dictionary::new();
+        for (key, value) in entries {
+            dictionary.insert(key.to_owned(), value);
+        }
+        Value::Dictionary(dictionary)
+    }
+
     static VALUE_DISPLAY_PLAIN_STRING: LazyLock<ValueDisplayTestCase> =
         LazyLock::new(|| ValueDisplayTestCase {
             value: string("a\nb\t|c"),
@@ -175,12 +182,13 @@ mod tests {
         });
     static VALUE_DISPLAY_DICTIONARY: LazyLock<ValueDisplayTestCase> =
         LazyLock::new(|| ValueDisplayTestCase {
-            value: Value::Dictionary(BTreeMap::from([
-                ("count".to_owned(), Value::Integer(2)),
-                ("name".to_owned(), string("foo")),
-            ])),
+            value: dictionary(vec![("name", string("foo")), ("count", Value::Integer(2))]),
             alternate: true,
-            expected: "{ count = 2, name = \"foo\" }",
+            expected: if cfg!(feature = "dictionary-indexmap") {
+                "{ name = \"foo\", count = 2 }"
+            } else {
+                "{ count = 2, name = \"foo\" }"
+            },
         });
 
     static SECTION_DISPLAY_CASE: LazyLock<SectionDisplayTestCase> =
@@ -196,7 +204,7 @@ mod tests {
         });
 
     static ION_DISPLAY_CASE: LazyLock<IonDisplayTestCase> = LazyLock::new(|| {
-        let sections = BTreeMap::from([
+        let sections = std::collections::BTreeMap::from([
             (
                 "ALPHA".to_owned(),
                 section(vec![("name", string("foo"))], vec![]),

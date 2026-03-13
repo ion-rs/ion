@@ -144,7 +144,6 @@ impl FromStr for Value {
 mod tests {
     use crate::{Dictionary, Value};
     use pretty_assertions::assert_eq;
-    use std::collections::BTreeMap;
     use std::sync::LazyLock;
     use test_case::test_case;
 
@@ -204,7 +203,7 @@ mod tests {
         expected_dictionary_lookup: None,
     });
     static DICTIONARY_HELPER_CASE: LazyLock<HelperTestCase> = LazyLock::new(|| {
-        let dictionary = BTreeMap::from([("name".to_owned(), Value::new_string("foo"))]);
+        let dictionary = Dictionary::from([("name".to_owned(), Value::new_string("foo"))]);
         HelperTestCase {
             value: Value::Dictionary(dictionary),
             expected_type: "dictionary",
@@ -219,7 +218,8 @@ mod tests {
     #[test_case(&*INTEGER_CASE; "integer")]
     fn integer(case: &ParseTestCase) {
         let value: Value = case.raw.parse().unwrap();
-        assert_eq!(case.expected_integer.unwrap(), value.parse().unwrap());
+        let actual: i64 = value.parse().unwrap();
+        assert_eq!(case.expected_integer.unwrap(), actual);
     }
 
     #[test_case(&*FLOAT_CASE; "float")]
