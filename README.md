@@ -20,14 +20,14 @@ Default backend:
 
 ```toml
 [dependencies]
-ion = "0.9.1"
+ion = "0.10.0"
 ```
 
 Insertion-ordered dictionaries with `IndexMap`:
 
 ```toml
 [dependencies]
-ion = { version = "0.9.1", features = ["dictionary-indexmap"] }
+ion = { version = "0.10.0", features = ["dictionary-indexmap"] }
 ```
 
 ## Why ion?

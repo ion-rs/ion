@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.10.0
+
 ### Added
 
 - Add optional `dictionary-indexmap` feature to use `indexmap::IndexMap` for `Dictionary`
