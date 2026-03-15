@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Changed
+
+- Convert the repository to a Cargo workspace and move the `ion` crate into `ion/`
+- Make CI commands workspace-aware (`cargo test/clippy/fmt` via workspace scope)
+
+### Breaking changes
+
+- Repository layout changed for contributors: the crate manifest moved from `./Cargo.toml` to `./ion/Cargo.toml`
+- Public library API remains unchanged
+
 ## 0.10.0
 
 ### Added
