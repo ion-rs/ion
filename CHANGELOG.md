@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.11.0
+
 ### Changed
 
 - Reduce string value allocation overhead by storing `Value::String` as `Box<str>`

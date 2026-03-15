@@ -65,10 +65,10 @@ Options:
 
 ```console
 $ ion-fmt --version
-ion-fmt 0.10.1
+ion-fmt 0.11.0
 
 $ ion-fmt -V
-ion-fmt 0.10.1
+ion-fmt 0.11.0
 
 ```
 
