@@ -1,0 +1,17 @@
+[WITH_HEADER]
+title="rate-plan"
+active=true
+priority=10
+| day | market | room | net | seats |
+|-----|--------|------|-----|-------|
+| 20260101 | PL | DBL | 120.5 | 3 |
+| 20260102 | DE | SGL | 99 | 12 |
+| 20260103 | UK | APP | 145.25 | 2 |
+
+[WITHOUT_HEADER]
+source="legacy"
+enabled=false
+batch=7
+| 1 | alpha | PL | 11.2 | ok |
+| 2 | beta | DE | 9 | hold |
+| 3 | gamma | UK | 13.75 | ok |

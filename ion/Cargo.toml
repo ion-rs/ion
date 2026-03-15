@@ -1,0 +1,29 @@
+[package]
+name = "ion"
+version = "0.10.0"
+description = "*.ion file parser"
+edition = "2024"
+license = "MIT"
+homepage = "https://github.com/ion-rs/ion"
+repository = "https://github.com/ion-rs/ion"
+readme = "README.md"
+
+[features]
+default = []
+dictionary-indexmap = ["dep:indexmap"]
+
+[dependencies]
+indexmap = { workspace = true, optional = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+quickcheck = { workspace = true }
+quickcheck_macros = { workspace = true }
+regex = { workspace = true }
+pretty_assertions = { workspace = true }
+test-case = { workspace = true }
+indoc = { workspace = true }
+
+[[bench]]
+name = "parse"
+harness = false
