@@ -8,15 +8,18 @@
 [docs-badge]: https://img.shields.io/badge/docs.rs-latest-informational
 [docs-link]: https://docs.rs/ion
 
-# ion: Advanced Ion File Parser
+`ion` is a Rust crate for parsing section-based `*.ion` documents into strongly typed data structures you can query, transform, and serialize back.
 
-## Overview
+## Why Use `ion` in Rust?
 
-`ion` is a sophisticated parser for `*.ion` files, crafted in Rust to handle a versatile data format. This format is ideal for configurations and structured data, supporting a diverse range of types like `String`, `Integer (i64)`, `Float (f64)`, `Boolean`, `Arrays`, and `Dictionary`.
+- Parse mixed documents containing section dictionaries and table rows.
+- Work with typed values (`String`, `i64`, `f64`, `bool`, arrays, dictionaries).
+- Keep stable output formatting and control dictionary ordering backend.
+- Filter parsing by section when you only need part of a large file.
 
 ## Installation
 
-Default backend:
+Default dictionary backend (`BTreeMap`):
 
 ```toml
 [dependencies]
@@ -30,37 +33,7 @@ Insertion-ordered dictionaries with `IndexMap`:
 ion = { version = "0.10.0", features = ["dictionary-indexmap"] }
 ```
 
-## Why ion?
-
-- Parse mixed section-based documents that combine key/value dictionaries and table rows.
-- Round-trip Ion documents into a stable textual representation.
-- Choose sorted dictionary output by default, or insertion-ordered dictionaries with `dictionary-indexmap`.
-
-## Features
-
-- **Diverse Data Type Support**: Capable of parsing Strings, Integers, Floats, Booleans, Arrays, and Dictionaries.
-- **Section-based Organization**: Facilitates data organization in distinct sections with varied structures.
-- **Efficient Parsing**: Optimized for performance and reliability in parsing complex Ion documents.
-- **Optional Dictionary Backend**: Uses `BTreeMap` by default, with an optional `dictionary-indexmap` feature for insertion-ordered dictionaries.
-
-## Backend Choice
-
-`Dictionary` uses:
-
-- `BTreeMap` by default
-  Best when you want deterministic sorted output and slightly better performance in most parser paths.
-- `IndexMap` with `dictionary-indexmap`
-  Best when you want dictionary iteration and display order to match insertion order.
-
-This choice affects dictionary ordering in:
-
-- `Value::Dictionary`
-- section field serialization
-- `Ion::to_string()`
-
-Section names are still stored separately and remain ordered independently from the dictionary backend.
-
-## Rust Example
+## Rust Quick Start
 
 ```rust
 use ion::Ion;
@@ -88,7 +61,7 @@ let rooms = ion.get("ROOMS").unwrap();
 assert_eq!(1, rooms.rows_without_header().len());
 ```
 
-Filtered parsing:
+Parse only selected sections:
 
 ```rust
 use ion::Ion;
@@ -105,6 +78,21 @@ let ion = Ion::from_str_filtered(raw, vec!["KEPT"]).unwrap();
 assert!(ion.get("IGNORED").is_none());
 assert!(ion.get("KEPT").is_some());
 ```
+
+## Backend Choice
+
+`Dictionary` uses:
+
+- `BTreeMap` by default
+- `IndexMap` with `dictionary-indexmap`
+
+This affects ordering in:
+
+- `Value::Dictionary`
+- section field serialization
+- `Ion::to_string()`
+
+Section names are still stored separately and remain ordered independently from the dictionary backend.
 
 ## Benchmark Results
 
