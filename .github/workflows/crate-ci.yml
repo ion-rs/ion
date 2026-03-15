@@ -16,7 +16,7 @@ jobs:
     name: Fmt (${{ inputs.package }})
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - run: cargo fmt -p ${{ inputs.package }} -- --check
 
@@ -24,7 +24,7 @@ jobs:
     name: Clippy (${{ inputs.package }})
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - run: cargo clippy -p ${{ inputs.package }} --all-features --tests -- -D warnings
 
@@ -32,7 +32,7 @@ jobs:
     name: Test Default (${{ inputs.package }})
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - run: cargo test -p ${{ inputs.package }}
 
@@ -40,6 +40,6 @@ jobs:
     name: Test All Features (${{ inputs.package }})
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - run: cargo test -p ${{ inputs.package }} --all-features
