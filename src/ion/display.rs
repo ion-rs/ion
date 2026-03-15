@@ -191,6 +191,19 @@ mod tests {
             },
         });
 
+    #[test_case(&*VALUE_DISPLAY_PLAIN_STRING; "plain string")]
+    #[test_case(&*VALUE_DISPLAY_ALTERNATE_STRING; "alternate string")]
+    #[test_case(&*VALUE_DISPLAY_EMPTY_ARRAY; "empty array")]
+    #[test_case(&*VALUE_DISPLAY_DICTIONARY; "dictionary")]
+    fn value_display(case: &ValueDisplayTestCase) {
+        let actual = if case.alternate {
+            format!("{:#}", case.value)
+        } else {
+            format!("{}", case.value)
+        };
+        assert_eq!(case.expected, actual);
+    }
+
     static SECTION_DISPLAY_CASE: LazyLock<SectionDisplayTestCase> =
         LazyLock::new(|| SectionDisplayTestCase {
             section: section(
@@ -202,6 +215,11 @@ mod tests {
                 | one | 2 |
             "#},
         });
+
+    #[test_case(&*SECTION_DISPLAY_CASE; "section")]
+    fn section_display(case: &SectionDisplayTestCase) {
+        assert_eq!(case.expected, format!("{}", case.section));
+    }
 
     static ION_DISPLAY_CASE: LazyLock<IonDisplayTestCase> = LazyLock::new(|| {
         let sections = std::collections::BTreeMap::from([
@@ -226,24 +244,6 @@ mod tests {
             "#},
         }
     });
-
-    #[test_case(&*VALUE_DISPLAY_PLAIN_STRING; "plain string")]
-    #[test_case(&*VALUE_DISPLAY_ALTERNATE_STRING; "alternate string")]
-    #[test_case(&*VALUE_DISPLAY_EMPTY_ARRAY; "empty array")]
-    #[test_case(&*VALUE_DISPLAY_DICTIONARY; "dictionary")]
-    fn value_display(case: &ValueDisplayTestCase) {
-        let actual = if case.alternate {
-            format!("{:#}", case.value)
-        } else {
-            format!("{}", case.value)
-        };
-        assert_eq!(case.expected, actual);
-    }
-
-    #[test_case(&*SECTION_DISPLAY_CASE; "section")]
-    fn section_display(case: &SectionDisplayTestCase) {
-        assert_eq!(case.expected, format!("{}", case.section));
-    }
 
     #[test_case(&*ION_DISPLAY_CASE; "ion")]
     fn ion_display(case: &IonDisplayTestCase) {

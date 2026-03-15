@@ -188,6 +188,19 @@ mod tests {
             expected_str: None,
         });
 
+    #[test_case(&*STRING_VALUE_CASE; "string")]
+    #[test_case(&*BOOLEAN_VALUE_CASE; "boolean")]
+    #[test_case(&*INTEGER_VALUE_CASE; "integer")]
+    fn value_accessors(case: &ValueConversionTestCase) {
+        assert_eq!(
+            case.expected_string.map(str::to_owned).as_ref(),
+            case.value.as_string()
+        );
+        assert_eq!(case.expected_boolean, case.value.as_boolean());
+        assert_eq!(case.expected_integer, case.value.as_integer());
+        assert_eq!(case.expected_str, case.value.as_str());
+    }
+
     static ROWS_WITHOUT_HEADER_CASE: LazyLock<RowCountTestCase> =
         LazyLock::new(|| RowCountTestCase {
             raw: r"
@@ -240,6 +253,27 @@ mod tests {
         expected_rows: 3,
         expected_missing_section: Some("BAR"),
     });
+
+    #[test_case(&*ROWS_WITHOUT_HEADER_CASE; "without header")]
+    #[test_case(&*ROWS_WITH_HEADER_CASE; "with header")]
+    #[test_case(&*NO_ROWS_WITH_HEADER_CASE; "header only")]
+    #[test_case(&*FILTERED_SECTION_CASE; "filtered section")]
+    fn rows_without_header(case: &RowCountTestCase) {
+        let ion = match &case.accepted_sections {
+            Some(accepted_sections) => {
+                Ion::from_str_filtered(case.raw, accepted_sections.clone()).unwrap()
+            }
+            None => case.raw.parse::<Ion>().unwrap(),
+        };
+
+        let rows = ion.get(case.section).unwrap().rows_without_header();
+        assert_eq!(case.expected_rows, rows.len());
+
+        if let Some(section) = case.expected_missing_section {
+            assert_eq!(None, ion.get(section));
+        }
+    }
+
     static ION_API_PRESENT_CASE: LazyLock<IonApiTestCase> = LazyLock::new(|| {
         let sections = BTreeMap::from([(
             "FOO".to_owned(),
@@ -263,61 +297,6 @@ mod tests {
             expected_iter_len: 1,
         }
     });
-    static ION_PARSE_ERROR_CASE: LazyLock<IonParseErrorTestCase> =
-        LazyLock::new(|| IonParseErrorTestCase {
-            raw: "key =",
-            accepted_sections: None,
-        });
-    static ION_FILTERED_PARSE_ERROR_CASE: LazyLock<IonParseErrorTestCase> =
-        LazyLock::new(|| IonParseErrorTestCase {
-            raw: "[FOO]\nkey =\n",
-            accepted_sections: Some(vec!["FOO"]),
-        });
-    static ORDERING_CASE: LazyLock<OrderingTestCase> = LazyLock::new(|| OrderingTestCase {
-        raw: r"
-            [ORDER]
-            b = 1
-            a = 2
-        ",
-        expected: if cfg!(feature = "dictionary-indexmap") {
-            "[ORDER]\nb = 1\na = 2\n\n"
-        } else {
-            "[ORDER]\na = 2\nb = 1\n\n"
-        },
-    });
-
-    #[test_case(&*STRING_VALUE_CASE; "string")]
-    #[test_case(&*BOOLEAN_VALUE_CASE; "boolean")]
-    #[test_case(&*INTEGER_VALUE_CASE; "integer")]
-    fn value_accessors(case: &ValueConversionTestCase) {
-        assert_eq!(
-            case.expected_string.map(str::to_owned).as_ref(),
-            case.value.as_string()
-        );
-        assert_eq!(case.expected_boolean, case.value.as_boolean());
-        assert_eq!(case.expected_integer, case.value.as_integer());
-        assert_eq!(case.expected_str, case.value.as_str());
-    }
-
-    #[test_case(&*ROWS_WITHOUT_HEADER_CASE; "without header")]
-    #[test_case(&*ROWS_WITH_HEADER_CASE; "with header")]
-    #[test_case(&*NO_ROWS_WITH_HEADER_CASE; "header only")]
-    #[test_case(&*FILTERED_SECTION_CASE; "filtered section")]
-    fn rows_without_header(case: &RowCountTestCase) {
-        let ion = match &case.accepted_sections {
-            Some(accepted_sections) => {
-                Ion::from_str_filtered(case.raw, accepted_sections.clone()).unwrap()
-            }
-            None => case.raw.parse::<Ion>().unwrap(),
-        };
-
-        let rows = ion.get(case.section).unwrap().rows_without_header();
-        assert_eq!(case.expected_rows, rows.len());
-
-        if let Some(section) = case.expected_missing_section {
-            assert_eq!(None, ion.get(section));
-        }
-    }
 
     #[test_case(&*ION_API_PRESENT_CASE; "ion api present")]
     #[test_case(&*ION_API_MISSING_CASE; "ion api missing")]
@@ -368,6 +347,17 @@ mod tests {
         assert_eq!(None, ion.remove("FOO"));
     }
 
+    static ION_PARSE_ERROR_CASE: LazyLock<IonParseErrorTestCase> =
+        LazyLock::new(|| IonParseErrorTestCase {
+            raw: "key =",
+            accepted_sections: None,
+        });
+    static ION_FILTERED_PARSE_ERROR_CASE: LazyLock<IonParseErrorTestCase> =
+        LazyLock::new(|| IonParseErrorTestCase {
+            raw: "[FOO]\nkey =\n",
+            accepted_sections: Some(vec!["FOO"]),
+        });
+
     #[test_case(&*ION_PARSE_ERROR_CASE; "from_str parse error")]
     #[test_case(&*ION_FILTERED_PARSE_ERROR_CASE; "from_str_filtered parse error")]
     fn parse_errors(case: &IonParseErrorTestCase) {
@@ -382,7 +372,20 @@ mod tests {
         }
     }
 
-    #[test_case(&*ORDERING_CASE; "dictionary ordering depends on backend")]
+    const ORDERING_CASE: OrderingTestCase = OrderingTestCase {
+        raw: r"
+            [ORDER]
+            b = 1
+            a = 2
+        ",
+        expected: if cfg!(feature = "dictionary-indexmap") {
+            "[ORDER]\nb = 1\na = 2\n\n"
+        } else {
+            "[ORDER]\na = 2\nb = 1\n\n"
+        },
+    };
+
+    #[test_case(&ORDERING_CASE; "dictionary ordering depends on backend")]
     fn dictionary_ordering(case: &OrderingTestCase) {
         let ion = case.raw.parse::<Ion>().unwrap();
         let actual = ion.to_string();

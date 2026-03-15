@@ -165,16 +165,30 @@ mod tests {
         expected_dictionary_lookup: Option<&'static str>,
     }
 
-    static INTEGER_CASE: LazyLock<ParseTestCase> = LazyLock::new(|| ParseTestCase {
+    const INTEGER_CASE: ParseTestCase = ParseTestCase {
         raw: "1",
         expected_integer: Some(1),
         expected_float: None,
-    });
-    static FLOAT_CASE: LazyLock<ParseTestCase> = LazyLock::new(|| ParseTestCase {
+    };
+    const FLOAT_CASE: ParseTestCase = ParseTestCase {
         raw: "4.0",
         expected_integer: None,
         expected_float: Some(4.0),
-    });
+    };
+    #[test_case(&INTEGER_CASE; "integer")]
+    fn integer(case: &ParseTestCase) {
+        let value: Value = case.raw.parse().unwrap();
+        let actual: i64 = value.parse().unwrap();
+        assert_eq!(case.expected_integer.unwrap(), actual);
+    }
+
+    #[test_case(&FLOAT_CASE; "float")]
+    fn float(case: &ParseTestCase) {
+        let value: Value = case.raw.parse().unwrap();
+        let parsed: f64 = value.parse().unwrap();
+        assert!((case.expected_float.unwrap() - parsed).abs() < f64::EPSILON);
+    }
+
     static STRING_HELPER_CASE: LazyLock<HelperTestCase> = LazyLock::new(|| HelperTestCase {
         value: Value::new_string("foo"),
         expected_type: "string",
@@ -214,20 +228,6 @@ mod tests {
             expected_dictionary_lookup: Some("foo"),
         }
     });
-
-    #[test_case(&*INTEGER_CASE; "integer")]
-    fn integer(case: &ParseTestCase) {
-        let value: Value = case.raw.parse().unwrap();
-        let actual: i64 = value.parse().unwrap();
-        assert_eq!(case.expected_integer.unwrap(), actual);
-    }
-
-    #[test_case(&*FLOAT_CASE; "float")]
-    fn float(case: &ParseTestCase) {
-        let value: Value = case.raw.parse().unwrap();
-        let parsed: f64 = value.parse().unwrap();
-        assert!((case.expected_float.unwrap() - parsed).abs() < f64::EPSILON);
-    }
 
     #[test_case(&*STRING_HELPER_CASE; "string helpers")]
     #[test_case(&*ARRAY_HELPER_CASE; "array helpers")]

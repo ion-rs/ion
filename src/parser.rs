@@ -679,37 +679,44 @@ mod tests {
         sections
     }
 
-    static FINISH_STRING_COMPLETE: LazyLock<FinishStringTestCase> =
-        LazyLock::new(|| FinishStringTestCase {
-            raw: "\"foObar\"",
-            expected: Some("foObar"),
-        });
-    static FINISH_STRING_UNTERMINATED: LazyLock<FinishStringTestCase> =
-        LazyLock::new(|| FinishStringTestCase {
-            raw: "\"foObar",
-            expected: Some("foObar"),
-        });
-    static FINISH_STRING_EMPTY: LazyLock<FinishStringTestCase> =
-        LazyLock::new(|| FinishStringTestCase {
-            raw: "\"\"",
-            expected: Some(""),
-        });
-    static FINISH_STRING_MISSING: LazyLock<FinishStringTestCase> =
-        LazyLock::new(|| FinishStringTestCase {
-            raw: "",
-            expected: None,
-        });
+    const FINISH_STRING_COMPLETE: FinishStringTestCase = FinishStringTestCase {
+        raw: "\"foObar\"",
+        expected: Some("foObar"),
+    };
+    const FINISH_STRING_UNTERMINATED: FinishStringTestCase = FinishStringTestCase {
+        raw: "\"foObar",
+        expected: Some("foObar"),
+    };
+    const FINISH_STRING_EMPTY: FinishStringTestCase = FinishStringTestCase {
+        raw: "\"\"",
+        expected: Some(""),
+    };
+    const FINISH_STRING_MISSING: FinishStringTestCase = FinishStringTestCase {
+        raw: "",
+        expected: None,
+    };
 
-    static FINISH_ARRAY_UNTERMINATED_VALUE: LazyLock<FinishValueTestCase> =
-        LazyLock::new(|| FinishValueTestCase {
-            raw: "[\"a\"",
-            expected: None,
+    #[test_case(&FINISH_STRING_COMPLETE; "complete")]
+    #[test_case(&FINISH_STRING_UNTERMINATED; "unterminated")]
+    #[test_case(&FINISH_STRING_EMPTY; "empty")]
+    #[test_case(&FINISH_STRING_MISSING; "missing")]
+    fn finish_string(case: &FinishStringTestCase) {
+        let mut parser = Parser::new(case.raw);
+        let actual = parser.finish_string().map(|value| match value {
+            Value::String(value) => value,
+            other => panic!("expected string value, got {other:?}"),
         });
-    static FINISH_ARRAY_MISSING_CLOSE: LazyLock<FinishValueTestCase> =
-        LazyLock::new(|| FinishValueTestCase {
-            raw: "[",
-            expected: None,
-        });
+        assert_eq!(case.expected.map(str::to_owned), actual);
+    }
+
+    const FINISH_ARRAY_UNTERMINATED_VALUE: FinishValueTestCase = FinishValueTestCase {
+        raw: "[\"a\"",
+        expected: None,
+    };
+    const FINISH_ARRAY_MISSING_CLOSE: FinishValueTestCase = FinishValueTestCase {
+        raw: "[",
+        expected: None,
+    };
     static FINISH_ARRAY_EMPTY: LazyLock<FinishValueTestCase> =
         LazyLock::new(|| FinishValueTestCase {
             raw: "[]",
@@ -721,21 +728,27 @@ mod tests {
             expected: Some(Value::new_string_array("a")),
         });
 
-    static FINISH_DICTIONARY_MISSING_CLOSE: LazyLock<FinishValueTestCase> =
-        LazyLock::new(|| FinishValueTestCase {
-            raw: "{",
-            expected: None,
-        });
-    static FINISH_DICTIONARY_MISSING_ASSIGNMENT_VALUE: LazyLock<FinishValueTestCase> =
-        LazyLock::new(|| FinishValueTestCase {
-            raw: "{ foo = ",
-            expected: None,
-        });
-    static FINISH_DICTIONARY_UNTERMINATED_ARRAY: LazyLock<FinishValueTestCase> =
-        LazyLock::new(|| FinishValueTestCase {
-            raw: "{ foo = [\"bar\"]",
-            expected: None,
-        });
+    #[test_case(&FINISH_ARRAY_UNTERMINATED_VALUE; "unterminated value")]
+    #[test_case(&FINISH_ARRAY_MISSING_CLOSE; "missing close")]
+    #[test_case(&*FINISH_ARRAY_EMPTY; "empty")]
+    #[test_case(&*FINISH_ARRAY_SINGLE_VALUE; "single value")]
+    fn finish_array(case: &FinishValueTestCase) {
+        let mut parser = Parser::new(case.raw);
+        assert_eq!(case.expected, parser.finish_array());
+    }
+
+    const FINISH_DICTIONARY_MISSING_CLOSE: FinishValueTestCase = FinishValueTestCase {
+        raw: "{",
+        expected: None,
+    };
+    const FINISH_DICTIONARY_MISSING_ASSIGNMENT_VALUE: FinishValueTestCase = FinishValueTestCase {
+        raw: "{ foo = ",
+        expected: None,
+    };
+    const FINISH_DICTIONARY_UNTERMINATED_ARRAY: FinishValueTestCase = FinishValueTestCase {
+        raw: "{ foo = [\"bar\"]",
+        expected: None,
+    };
     static FINISH_DICTIONARY_EMPTY: LazyLock<FinishValueTestCase> =
         LazyLock::new(|| FinishValueTestCase {
             raw: "{}",
@@ -747,57 +760,85 @@ mod tests {
             expected: Some(dictionary(vec![("foo", array(vec![string("bar")]))])),
         });
 
-    static SLICE_TO_INCLUDING_END: LazyLock<SliceTargetTestCase> =
-        LazyLock::new(|| SliceTargetTestCase {
-            raw: "foObar",
-            target: 'b',
-            expected: Some("foOb"),
-            next: Some((4, 'a')),
-        });
-    static SLICE_TO_INCLUDING_START: LazyLock<SliceTargetTestCase> =
-        LazyLock::new(|| SliceTargetTestCase {
-            raw: "foObar",
-            target: 'f',
-            expected: Some("f"),
-            next: Some((1, 'o')),
-        });
+    #[test_case(&FINISH_DICTIONARY_MISSING_CLOSE; "missing close")]
+    #[test_case(&FINISH_DICTIONARY_MISSING_ASSIGNMENT_VALUE; "missing assignment value")]
+    #[test_case(&FINISH_DICTIONARY_UNTERMINATED_ARRAY; "unterminated array")]
+    #[test_case(&*FINISH_DICTIONARY_EMPTY; "empty")]
+    #[test_case(&*FINISH_DICTIONARY_WITH_ARRAY; "with array")]
+    fn finish_dictionary(case: &FinishValueTestCase) {
+        let mut parser = Parser::new(case.raw);
+        assert_eq!(case.expected, parser.finish_dictionary());
+    }
 
-    static SLICE_TO_EXCLUDING_END: LazyLock<SliceTargetTestCase> =
-        LazyLock::new(|| SliceTargetTestCase {
-            raw: "foObar",
-            target: 'b',
-            expected: Some("foO"),
-            next: Some((4, 'a')),
-        });
-    static SLICE_TO_EXCLUDING_START: LazyLock<SliceTargetTestCase> =
-        LazyLock::new(|| SliceTargetTestCase {
-            raw: "foObar",
-            target: 'f',
-            expected: Some(""),
-            next: Some((1, 'o')),
-        });
-    static SLICE_TO_EXCLUDING_ESCAPED: LazyLock<SliceTargetTestCase> =
-        LazyLock::new(|| SliceTargetTestCase {
-            raw: "f\\oobar",
-            target: 'o',
-            expected: Some("f\\o"),
-            next: Some((4, 'b')),
-        });
+    const SLICE_TO_INCLUDING_END: SliceTargetTestCase = SliceTargetTestCase {
+        raw: "foObar",
+        target: 'b',
+        expected: Some("foOb"),
+        next: Some((4, 'a')),
+    };
+    const SLICE_TO_INCLUDING_START: SliceTargetTestCase = SliceTargetTestCase {
+        raw: "foObar",
+        target: 'f',
+        expected: Some("f"),
+        next: Some((1, 'o')),
+    };
 
-    static SLICE_WHILE_UNTIL_MATCH: LazyLock<SliceWhileTestCase> =
-        LazyLock::new(|| SliceWhileTestCase {
-            raw: "foObar",
-            stop_at: 'b',
-            expected: Some("foO"),
-            next: Some((3, 'b')),
-        });
-    static SLICE_WHILE_STOPS_IMMEDIATELY: LazyLock<SliceWhileTestCase> =
-        LazyLock::new(|| SliceWhileTestCase {
-            raw: "foObar",
-            stop_at: 'f',
-            expected: None,
-            next: Some((0, 'f')),
-        });
+    const SLICE_TO_EXCLUDING_END: SliceTargetTestCase = SliceTargetTestCase {
+        raw: "foObar",
+        target: 'b',
+        expected: Some("foO"),
+        next: Some((4, 'a')),
+    };
+    const SLICE_TO_EXCLUDING_START: SliceTargetTestCase = SliceTargetTestCase {
+        raw: "foObar",
+        target: 'f',
+        expected: Some(""),
+        next: Some((1, 'o')),
+    };
+    const SLICE_TO_EXCLUDING_ESCAPED: SliceTargetTestCase = SliceTargetTestCase {
+        raw: "f\\oobar",
+        target: 'o',
+        expected: Some("f\\o"),
+        next: Some((4, 'b')),
+    };
+
+    const SLICE_WHILE_UNTIL_MATCH: SliceWhileTestCase = SliceWhileTestCase {
+        raw: "foObar",
+        stop_at: 'b',
+        expected: Some("foO"),
+        next: Some((3, 'b')),
+    };
+    const SLICE_WHILE_STOPS_IMMEDIATELY: SliceWhileTestCase = SliceWhileTestCase {
+        raw: "foObar",
+        stop_at: 'f',
+        expected: None,
+        next: Some((0, 'f')),
+    };
+
+    #[test_case(&SLICE_TO_INCLUDING_END; "needle in middle")]
+    #[test_case(&SLICE_TO_INCLUDING_START; "needle at start")]
+    fn slice_to_including(case: &SliceTargetTestCase) {
+        let mut parser = Parser::new(case.raw);
+        assert_eq!(case.expected, parser.slice_to_including(case.target));
+        assert_eq!(case.next, parser.cur.next());
+    }
+
+    #[test_case(&SLICE_TO_EXCLUDING_END; "needle in middle")]
+    #[test_case(&SLICE_TO_EXCLUDING_START; "needle at start")]
+    #[test_case(&SLICE_TO_EXCLUDING_ESCAPED; "escaped delimiter")]
+    fn slice_to_excluding(case: &SliceTargetTestCase) {
+        let mut parser = Parser::new(case.raw);
+        assert_eq!(case.expected, parser.slice_to_excluding(case.target));
+        assert_eq!(case.next, parser.cur.next());
+    }
+
+    #[test_case(&SLICE_WHILE_UNTIL_MATCH; "progresses until stop")]
+    #[test_case(&SLICE_WHILE_STOPS_IMMEDIATELY; "stops immediately")]
+    fn slice_while(case: &SliceWhileTestCase) {
+        let mut parser = Parser::new(case.raw);
+        assert_eq!(case.expected, parser.slice_while(|c| c != case.stop_at));
+        assert_eq!(case.next, parser.cur.next());
+    }
 
     static PARSE_MAIN_CASE: LazyLock<ParseIteratorTestCase> =
         LazyLock::new(|| ParseIteratorTestCase {
@@ -866,82 +907,113 @@ mod tests {
             ],
         });
 
+    #[test_case(&*PARSE_MAIN_CASE; "main document")]
+    #[test_case(&*PARSE_CRLF_CASE; "crlf document")]
+    fn parse(case: &ParseIteratorTestCase) {
+        let mut parser = Parser::new(case.raw);
+
+        let actual: Vec<_> = parser.by_ref().collect();
+        assert_eq!(case.expected, actual);
+        assert_eq!(None, parser.next());
+    }
+
     static COMMENT_PRESENT_CASE: LazyLock<CommentTestCase> = LazyLock::new(|| CommentTestCase {
         raw: "# comment\n",
         expected: Some(Comment(" comment\n".to_owned())),
         next: None,
     });
-    static COMMENT_ABSENT_CASE: LazyLock<CommentTestCase> = LazyLock::new(|| CommentTestCase {
+    const COMMENT_ABSENT_CASE: CommentTestCase = CommentTestCase {
         raw: "foo",
         expected: None,
         next: Some((0, 'f')),
-    });
+    };
+
+    #[test_case(&*COMMENT_PRESENT_CASE; "comment present")]
+    #[test_case(&COMMENT_ABSENT_CASE; "comment absent")]
+    fn comment(case: &CommentTestCase) {
+        let mut parser = Parser::new(case.raw);
+        assert_eq!(case.expected, parser.comment());
+        assert_eq!(case.next, parser.cur.next());
+    }
 
     static DISPLAY_ARRAY: LazyLock<DisplayTestCase> = LazyLock::new(|| DisplayTestCase {
         value: array(vec![Value::Integer(1), string("foo")]),
         expected: "[ 1, \"foo\" ]",
     });
 
-    static REPLACE_ESCAPES_PLAIN_TEXT: LazyLock<ReplaceEscapesTestCase> =
-        LazyLock::new(|| ReplaceEscapesTestCase {
-            raw: "a b",
-            escape_quote: true,
-            expected: "a b",
-        });
-    static REPLACE_ESCAPES_TRAILING_SLASH: LazyLock<ReplaceEscapesTestCase> =
-        LazyLock::new(|| ReplaceEscapesTestCase {
-            raw: r"a b\",
-            escape_quote: true,
-            expected: "a b\\",
-        });
-    static REPLACE_ESCAPES_NEWLINE: LazyLock<ReplaceEscapesTestCase> =
-        LazyLock::new(|| ReplaceEscapesTestCase {
-            raw: r"a\nb",
-            escape_quote: true,
-            expected: "a\nb",
-        });
-    static REPLACE_ESCAPES_TAB: LazyLock<ReplaceEscapesTestCase> =
-        LazyLock::new(|| ReplaceEscapesTestCase {
-            raw: r"a\tb",
-            escape_quote: true,
-            expected: "a\tb",
-        });
-    static REPLACE_ESCAPES_BACKSLASH: LazyLock<ReplaceEscapesTestCase> =
-        LazyLock::new(|| ReplaceEscapesTestCase {
-            raw: r"a\\b",
-            escape_quote: true,
-            expected: r"a\b",
-        });
-    static REPLACE_ESCAPES_LITERAL_SEQUENCE: LazyLock<ReplaceEscapesTestCase> =
-        LazyLock::new(|| ReplaceEscapesTestCase {
-            raw: r"a\\nb",
-            escape_quote: true,
-            expected: r"a\nb",
-        });
-    static REPLACE_ESCAPES_PIPE: LazyLock<ReplaceEscapesTestCase> =
-        LazyLock::new(|| ReplaceEscapesTestCase {
-            raw: r"a\|b",
-            escape_quote: true,
-            expected: "a|b",
-        });
-    static REPLACE_ESCAPES_QUOTE_ESCAPED: LazyLock<ReplaceEscapesTestCase> =
-        LazyLock::new(|| ReplaceEscapesTestCase {
-            raw: "a\\\"b",
-            escape_quote: true,
-            expected: "a\"b",
-        });
-    static REPLACE_ESCAPES_QUOTE_LITERAL: LazyLock<ReplaceEscapesTestCase> =
-        LazyLock::new(|| ReplaceEscapesTestCase {
-            raw: "a\\\"b",
-            escape_quote: false,
-            expected: "a\\\"b",
-        });
-    static REPLACE_ESCAPES_UNKNOWN_ESCAPES: LazyLock<ReplaceEscapesTestCase> =
-        LazyLock::new(|| ReplaceEscapesTestCase {
-            raw: r"a\\n\\t\\\b",
-            escape_quote: true,
-            expected: r"a\n\t\\b",
-        });
+    #[test]
+    fn display() {
+        let case = &*DISPLAY_ARRAY;
+        assert_eq!(case.expected, format!("{:#}", case.value));
+    }
+
+    const REPLACE_ESCAPES_PLAIN_TEXT: ReplaceEscapesTestCase = ReplaceEscapesTestCase {
+        raw: "a b",
+        escape_quote: true,
+        expected: "a b",
+    };
+    const REPLACE_ESCAPES_TRAILING_SLASH: ReplaceEscapesTestCase = ReplaceEscapesTestCase {
+        raw: r"a b\",
+        escape_quote: true,
+        expected: "a b\\",
+    };
+    const REPLACE_ESCAPES_NEWLINE: ReplaceEscapesTestCase = ReplaceEscapesTestCase {
+        raw: r"a\nb",
+        escape_quote: true,
+        expected: "a\nb",
+    };
+    const REPLACE_ESCAPES_TAB: ReplaceEscapesTestCase = ReplaceEscapesTestCase {
+        raw: r"a\tb",
+        escape_quote: true,
+        expected: "a\tb",
+    };
+    const REPLACE_ESCAPES_BACKSLASH: ReplaceEscapesTestCase = ReplaceEscapesTestCase {
+        raw: r"a\\b",
+        escape_quote: true,
+        expected: r"a\b",
+    };
+    const REPLACE_ESCAPES_LITERAL_SEQUENCE: ReplaceEscapesTestCase = ReplaceEscapesTestCase {
+        raw: r"a\\nb",
+        escape_quote: true,
+        expected: r"a\nb",
+    };
+    const REPLACE_ESCAPES_PIPE: ReplaceEscapesTestCase = ReplaceEscapesTestCase {
+        raw: r"a\|b",
+        escape_quote: true,
+        expected: "a|b",
+    };
+    const REPLACE_ESCAPES_QUOTE_ESCAPED: ReplaceEscapesTestCase = ReplaceEscapesTestCase {
+        raw: "a\\\"b",
+        escape_quote: true,
+        expected: "a\"b",
+    };
+    const REPLACE_ESCAPES_QUOTE_LITERAL: ReplaceEscapesTestCase = ReplaceEscapesTestCase {
+        raw: "a\\\"b",
+        escape_quote: false,
+        expected: "a\\\"b",
+    };
+    const REPLACE_ESCAPES_UNKNOWN_ESCAPES: ReplaceEscapesTestCase = ReplaceEscapesTestCase {
+        raw: r"a\\n\\t\\\b",
+        escape_quote: true,
+        expected: r"a\n\t\\b",
+    };
+
+    #[test_case(&REPLACE_ESCAPES_PLAIN_TEXT; "plain text")]
+    #[test_case(&REPLACE_ESCAPES_TRAILING_SLASH; "trailing slash")]
+    #[test_case(&REPLACE_ESCAPES_NEWLINE; "newline")]
+    #[test_case(&REPLACE_ESCAPES_TAB; "tab")]
+    #[test_case(&REPLACE_ESCAPES_BACKSLASH; "backslash")]
+    #[test_case(&REPLACE_ESCAPES_LITERAL_SEQUENCE; "literal sequence")]
+    #[test_case(&REPLACE_ESCAPES_PIPE; "pipe")]
+    #[test_case(&REPLACE_ESCAPES_QUOTE_ESCAPED; "quote escaped")]
+    #[test_case(&REPLACE_ESCAPES_QUOTE_LITERAL; "quote literal")]
+    #[test_case(&REPLACE_ESCAPES_UNKNOWN_ESCAPES; "unknown escapes")]
+    fn replace_escapes(case: &ReplaceEscapesTestCase) {
+        assert_eq!(
+            case.expected,
+            super::replace_escapes(case.raw, case.escape_quote)
+        );
+    }
 
     static READ_ROOT_STRING: LazyLock<ReadTestCase> = LazyLock::new(|| ReadTestCase {
         raw: r#"
@@ -1234,130 +1306,6 @@ mod tests {
                 section(vec![("key", string("value"))], vec![row(&["col1", "col2"])]),
             )])),
         });
-    static VALUE_ERROR_INVALID_SCALAR: LazyLock<ValueErrorTestCase> =
-        LazyLock::new(|| ValueErrorTestCase {
-            raw: "?",
-            expected_error: "Cannot read a value",
-        });
-    static BOOLEAN_INVALID_LITERAL: LazyLock<BooleanTestCase> = LazyLock::new(|| BooleanTestCase {
-        raw: "truthy",
-        start: 0,
-        expected: None,
-        next: Some((0, 't')),
-    });
-    static FILTER_ITERATION_EXHAUSTS_ACCEPTED_SECTIONS: LazyLock<FilterIterationTestCase> =
-        LazyLock::new(|| FilterIterationTestCase {
-            raw: r#"
-                [ACCEPTED]
-                key = "value"
-                [FILTERED]
-                other = "ignored"
-            "#,
-            accepted_sections: &["ACCEPTED"],
-            expected_prefix: vec![
-                Element::Section("ACCEPTED".to_owned()),
-                Entry("key".to_owned(), string("value")),
-            ],
-            expected_after_none: Some(Entry("other".to_owned(), string("ignored"))),
-        });
-
-    #[test_case(&*FINISH_STRING_COMPLETE; "complete")]
-    #[test_case(&*FINISH_STRING_UNTERMINATED; "unterminated")]
-    #[test_case(&*FINISH_STRING_EMPTY; "empty")]
-    #[test_case(&*FINISH_STRING_MISSING; "missing")]
-    fn finish_string(case: &FinishStringTestCase) {
-        let mut parser = Parser::new(case.raw);
-        let actual = parser.finish_string().map(|value| match value {
-            Value::String(value) => value,
-            other => panic!("expected string value, got {other:?}"),
-        });
-        assert_eq!(case.expected.map(str::to_owned), actual);
-    }
-
-    #[test_case(&*FINISH_ARRAY_UNTERMINATED_VALUE; "unterminated value")]
-    #[test_case(&*FINISH_ARRAY_MISSING_CLOSE; "missing close")]
-    #[test_case(&*FINISH_ARRAY_EMPTY; "empty")]
-    #[test_case(&*FINISH_ARRAY_SINGLE_VALUE; "single value")]
-    fn finish_array(case: &FinishValueTestCase) {
-        let mut parser = Parser::new(case.raw);
-        assert_eq!(case.expected, parser.finish_array());
-    }
-
-    #[test_case(&*FINISH_DICTIONARY_MISSING_CLOSE; "missing close")]
-    #[test_case(&*FINISH_DICTIONARY_MISSING_ASSIGNMENT_VALUE; "missing assignment value")]
-    #[test_case(&*FINISH_DICTIONARY_UNTERMINATED_ARRAY; "unterminated array")]
-    #[test_case(&*FINISH_DICTIONARY_EMPTY; "empty")]
-    #[test_case(&*FINISH_DICTIONARY_WITH_ARRAY; "with array")]
-    fn finish_dictionary(case: &FinishValueTestCase) {
-        let mut parser = Parser::new(case.raw);
-        assert_eq!(case.expected, parser.finish_dictionary());
-    }
-
-    #[test_case(&*SLICE_TO_INCLUDING_END; "needle in middle")]
-    #[test_case(&*SLICE_TO_INCLUDING_START; "needle at start")]
-    fn slice_to_including(case: &SliceTargetTestCase) {
-        let mut parser = Parser::new(case.raw);
-        assert_eq!(case.expected, parser.slice_to_including(case.target));
-        assert_eq!(case.next, parser.cur.next());
-    }
-
-    #[test_case(&*SLICE_TO_EXCLUDING_END; "needle in middle")]
-    #[test_case(&*SLICE_TO_EXCLUDING_START; "needle at start")]
-    #[test_case(&*SLICE_TO_EXCLUDING_ESCAPED; "escaped delimiter")]
-    fn slice_to_excluding(case: &SliceTargetTestCase) {
-        let mut parser = Parser::new(case.raw);
-        assert_eq!(case.expected, parser.slice_to_excluding(case.target));
-        assert_eq!(case.next, parser.cur.next());
-    }
-
-    #[test_case(&*SLICE_WHILE_UNTIL_MATCH; "progresses until stop")]
-    #[test_case(&*SLICE_WHILE_STOPS_IMMEDIATELY; "stops immediately")]
-    fn slice_while(case: &SliceWhileTestCase) {
-        let mut parser = Parser::new(case.raw);
-        assert_eq!(case.expected, parser.slice_while(|c| c != case.stop_at));
-        assert_eq!(case.next, parser.cur.next());
-    }
-
-    #[test_case(&*PARSE_MAIN_CASE; "main document")]
-    #[test_case(&*PARSE_CRLF_CASE; "crlf document")]
-    fn parse(case: &ParseIteratorTestCase) {
-        let mut parser = Parser::new(case.raw);
-
-        let actual: Vec<_> = parser.by_ref().collect();
-        assert_eq!(case.expected, actual);
-        assert_eq!(None, parser.next());
-    }
-
-    #[test_case(&*COMMENT_PRESENT_CASE; "comment present")]
-    #[test_case(&*COMMENT_ABSENT_CASE; "comment absent")]
-    fn comment(case: &CommentTestCase) {
-        let mut parser = Parser::new(case.raw);
-        assert_eq!(case.expected, parser.comment());
-        assert_eq!(case.next, parser.cur.next());
-    }
-
-    #[test]
-    fn display() {
-        let case = &*DISPLAY_ARRAY;
-        assert_eq!(case.expected, format!("{:#}", case.value));
-    }
-
-    #[test_case(&*REPLACE_ESCAPES_PLAIN_TEXT; "plain text")]
-    #[test_case(&*REPLACE_ESCAPES_TRAILING_SLASH; "trailing slash")]
-    #[test_case(&*REPLACE_ESCAPES_NEWLINE; "newline")]
-    #[test_case(&*REPLACE_ESCAPES_TAB; "tab")]
-    #[test_case(&*REPLACE_ESCAPES_BACKSLASH; "backslash")]
-    #[test_case(&*REPLACE_ESCAPES_LITERAL_SEQUENCE; "literal sequence")]
-    #[test_case(&*REPLACE_ESCAPES_PIPE; "pipe")]
-    #[test_case(&*REPLACE_ESCAPES_QUOTE_ESCAPED; "quote escaped")]
-    #[test_case(&*REPLACE_ESCAPES_QUOTE_LITERAL; "quote literal")]
-    #[test_case(&*REPLACE_ESCAPES_UNKNOWN_ESCAPES; "unknown escapes")]
-    fn replace_escapes(case: &ReplaceEscapesTestCase) {
-        assert_eq!(
-            case.expected,
-            super::replace_escapes(case.raw, case.escape_quote)
-        );
-    }
 
     #[test_case(&*READ_ROOT_STRING; "root string")]
     #[test_case(&*READ_ROOT_ARRAY; "root array")]
@@ -1389,7 +1337,12 @@ mod tests {
         assert_eq!(case.expected, actual);
     }
 
-    #[test_case(&*VALUE_ERROR_INVALID_SCALAR; "invalid scalar")]
+    const VALUE_ERROR_INVALID_SCALAR: ValueErrorTestCase = ValueErrorTestCase {
+        raw: "?",
+        expected_error: "Cannot read a value",
+    };
+
+    #[test_case(&VALUE_ERROR_INVALID_SCALAR; "invalid scalar")]
     fn value_error(case: &ValueErrorTestCase) {
         let mut parser = Parser::new(case.raw);
         assert_eq!(None, parser.value());
@@ -1397,12 +1350,35 @@ mod tests {
         assert_eq!(case.expected_error, parser.errors[0].desc);
     }
 
-    #[test_case(&*BOOLEAN_INVALID_LITERAL; "invalid boolean literal")]
+    const BOOLEAN_INVALID_LITERAL: BooleanTestCase = BooleanTestCase {
+        raw: "truthy",
+        start: 0,
+        expected: None,
+        next: Some((0, 't')),
+    };
+
+    #[test_case(&BOOLEAN_INVALID_LITERAL; "invalid boolean literal")]
     fn boolean(case: &BooleanTestCase) {
         let mut parser = Parser::new(case.raw);
         assert_eq!(case.expected, parser.boolean(case.start));
         assert_eq!(case.next, parser.cur.next());
     }
+
+    static FILTER_ITERATION_EXHAUSTS_ACCEPTED_SECTIONS: LazyLock<FilterIterationTestCase> =
+        LazyLock::new(|| FilterIterationTestCase {
+            raw: r#"
+                [ACCEPTED]
+                key = "value"
+                [FILTERED]
+                other = "ignored"
+            "#,
+            accepted_sections: &["ACCEPTED"],
+            expected_prefix: vec![
+                Element::Section("ACCEPTED".to_owned()),
+                Entry("key".to_owned(), string("value")),
+            ],
+            expected_after_none: Some(Entry("other".to_owned(), string("ignored"))),
+        });
 
     #[test_case(&*FILTER_ITERATION_EXHAUSTS_ACCEPTED_SECTIONS; "accepted sections exhausted")]
     fn filtered_iteration(case: &FilterIterationTestCase) {
