@@ -8,12 +8,15 @@
 
 - Add optional `dictionary-indexmap` feature to use `indexmap::IndexMap` for `Dictionary`
 - Add `Ion::get_key_value`
+- Add `ParserErrorKind` with typed parser error variants (`CannotReadValue`, `UnclosedArray`, `UnclosedDictionary`)
+- Add `ParserError::kind()` for machine-readable parser error handling
 
 ### Changed
 
 - Add support for optional leading `-` in dictionary numeric values
 - Switch benchmarks from nightly `test::Bencher` to stable `criterion`
 - Update crate to Rust edition 2024
+- Keep parser error descriptions human-facing while storing structured parser error kind internally
 - Dictionary display and serialization order now depend on the selected backend
   Default builds keep sorted `BTreeMap` behavior; `dictionary-indexmap` preserves insertion order
 
