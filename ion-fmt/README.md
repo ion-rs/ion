@@ -29,6 +29,8 @@ let formatted = format_str(raw).unwrap();
 $ ion-fmt --help
 Formats Ion files.
 
+Build mode: default dictionary backend (BTreeMap, dictionary keys are sorted).
+
 Usage: ion-fmt [COMMAND]
 
 Commands:
@@ -38,8 +40,11 @@ Commands:
   help    Print this message or the help of the given subcommand(s)
 
 Options:
-  -h, --help     Print help
-  -V, --version  Print version
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
 
 ```
 

@@ -5,6 +5,7 @@
 ### Changed
 
 - Reduce string value allocation overhead by storing `Value::String` as `Box<str>`
+- Make `ion-fmt --help` report active dictionary build mode (`BTreeMap` sorted keys vs `dictionary-indexmap` insertion order)
 
 ### Breaking changes
 

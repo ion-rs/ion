@@ -11,6 +11,16 @@ use ion_fmt::{format_file, format_str, write_formatted_file};
 use std::io::{self, Read};
 use std::path::PathBuf;
 
+#[cfg(feature = "dictionary-indexmap")]
+const CLI_ABOUT: &str = "Formats Ion files.";
+#[cfg(feature = "dictionary-indexmap")]
+const CLI_LONG_ABOUT: &str = "Formats Ion files.\n\nBuild mode: dictionary-indexmap (dictionary keys preserve insertion order).";
+
+#[cfg(not(feature = "dictionary-indexmap"))]
+const CLI_ABOUT: &str = "Formats Ion files.";
+#[cfg(not(feature = "dictionary-indexmap"))]
+const CLI_LONG_ABOUT: &str = "Formats Ion files.\n\nBuild mode: default dictionary backend (BTreeMap, dictionary keys are sorted).";
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Mode {
     FormatInPlace,
@@ -19,7 +29,7 @@ enum Mode {
 }
 
 #[derive(Debug, Parser)]
-#[command(name = "ion-fmt", version, about = "Formats Ion files.")]
+#[command(name = "ion-fmt", version, about = CLI_ABOUT, long_about = CLI_LONG_ABOUT)]
 struct Cli {
     #[command(subcommand)]
     command: Option<CliCommand>,
