@@ -199,7 +199,7 @@ impl<'a> Parser<'a> {
                 self.boolean(pos)
             }
             _ => {
-                self.add_error("Cannot read a value");
+                self.add_error(ParserErrorKind::CannotReadValue);
                 None
             }
         }
@@ -228,7 +228,7 @@ impl<'a> Parser<'a> {
                     },
                 }
             } else {
-                self.add_error("Cannot finish an array");
+                self.add_error(ParserErrorKind::UnclosedArray);
                 break;
             }
         }
@@ -261,7 +261,7 @@ impl<'a> Parser<'a> {
                     }
                 }
             } else {
-                self.add_error("Cannot finish a dictionary");
+                self.add_error(ParserErrorKind::UnclosedDictionary);
                 break;
             }
         }
@@ -486,7 +486,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn add_error(&mut self, message: &str) {
+    fn add_error(&mut self, kind: ParserErrorKind) {
         let pos = self.cur.peek().map_or(self.input.len(), |(idx, _)| *idx);
         let (line, column) = self.line_column_at(pos);
         let (line_start, line_end) = self.line_bounds_at(pos);
@@ -494,7 +494,7 @@ impl<'a> Parser<'a> {
         let found = self.cur.peek().map(|(_, ch)| *ch);
 
         self.errors.push(ParserError {
-            desc: message.to_owned(),
+            kind,
             line,
             column,
             source_line,
@@ -559,9 +559,27 @@ impl<'a> Parser<'a> {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ParserErrorKind {
+    CannotReadValue,
+    UnclosedArray,
+    UnclosedDictionary,
+}
+
+impl ParserErrorKind {
+    #[must_use]
+    pub const fn description(self) -> &'static str {
+        match self {
+            Self::CannotReadValue => "Cannot read a value",
+            Self::UnclosedArray => "Cannot finish an array",
+            Self::UnclosedDictionary => "Cannot finish a dictionary",
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct ParserError {
-    desc: String,
+    kind: ParserErrorKind,
     line: usize,
     column: usize,
     source_line: String,
@@ -570,8 +588,13 @@ pub struct ParserError {
 
 impl ParserError {
     #[must_use]
+    pub fn kind(&self) -> ParserErrorKind {
+        self.kind
+    }
+
+    #[must_use]
     pub fn description(&self) -> &str {
-        &self.desc
+        self.kind.description()
     }
 
     #[must_use]
@@ -606,7 +629,9 @@ impl fmt::Display for ParserError {
         write!(
             f,
             "{} at line {}, column {}",
-            self.desc, self.line, self.column
+            self.description(),
+            self.line,
+            self.column
         )?;
 
         if let Some(found) = self.found {
@@ -664,6 +689,7 @@ fn replace_escapes(s: &str, escape_quote: bool) -> String {
 #[cfg(test)]
 mod tests {
     use super::Element::{self, Comment, Entry, Row};
+    use super::ParserErrorKind;
     use crate::{Dictionary, Parser, Section, Value};
     use pretty_assertions::assert_eq;
     use std::collections::BTreeMap;
@@ -734,6 +760,7 @@ mod tests {
     #[derive(Debug)]
     struct ValueErrorTestCase {
         raw: &'static str,
+        expected_kind: ParserErrorKind,
         expected_error: &'static str,
         expected_line: usize,
         expected_column: usize,
@@ -1453,6 +1480,7 @@ mod tests {
 
     const VALUE_ERROR_INVALID_SCALAR: ValueErrorTestCase = ValueErrorTestCase {
         raw: "?",
+        expected_kind: ParserErrorKind::CannotReadValue,
         expected_error: "Cannot read a value",
         expected_line: 1,
         expected_column: 1,
@@ -1465,6 +1493,7 @@ mod tests {
         assert_eq!(None, parser.value());
         assert_eq!(1, parser.errors.len());
         let error = &parser.errors[0];
+        assert_eq!(case.expected_kind, error.kind());
         assert_eq!(case.expected_error, error.description());
         assert_eq!(case.expected_line, error.line());
         assert_eq!(case.expected_column, error.column());
