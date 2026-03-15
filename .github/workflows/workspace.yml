@@ -1,45 +1,49 @@
-name: Test
-on: [ push, pull_request ]
+name: workspace CI
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   fmt:
-    name: Fmt (${{ matrix.package }})
+    name: Fmt (workspace)
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        package: [ion, ion-fmt]
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
-      - run: cargo fmt -p ${{ matrix.package }} -- --check
+      - run: cargo fmt --all -- --check
 
   clippy:
-    name: Clippy (${{ matrix.package }})
+    name: Clippy (workspace)
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        package: [ion, ion-fmt]
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
-      - run: cargo clippy -p ${{ matrix.package }} --all-features --tests -- -D warnings
+      - run: cargo clippy --workspace --all-features --tests -- -D warnings
 
-  test:
-    name: Test (${{ matrix.package }})
+  test_default:
+    name: Test Default (workspace)
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        package: [ion, ion-fmt]
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
-      - run: cargo test -p ${{ matrix.package }} --all-features
+      - run: cargo test --workspace
+
+  test_all_features:
+    name: Test All Features (workspace)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: cargo test --workspace --all-features
 
   audit:
-    name: Audit
+    name: Audit (workspace)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

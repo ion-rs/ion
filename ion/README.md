@@ -1,7 +1,7 @@
 # ion &emsp; [![crates-badge]][crates-link] [![docs-badge]][docs-link]
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/rust-lang/docs.rs/master/LICENSE)
-[![Test Status](https://github.com/ion-rs/ion/workflows/Test/badge.svg)](https://github.com/ion-rs/ion/actions)
+[![ion CI](https://github.com/ion-rs/ion/actions/workflows/ion.yml/badge.svg?branch=master)](https://github.com/ion-rs/ion/actions/workflows/ion.yml)
 
 [crates-badge]: https://img.shields.io/crates/v/ion.svg
 [crates-link]: https://crates.io/crates/ion

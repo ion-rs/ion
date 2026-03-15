@@ -6,6 +6,7 @@
 
 - Reduce string value allocation overhead by storing `Value::String` as `Box<str>`
 - Make `ion-fmt --help` report active dictionary build mode (`BTreeMap` sorted keys vs `dictionary-indexmap` insertion order)
+- Split CI into crate-specific workflows (`ion.yml`, `ion-fmt.yml`) and add a full workspace safety workflow (`workspace.yml`) for `master`
 
 ### Breaking changes
 

@@ -1,26 +1,6 @@
 # ion-fmt
 
-`ion-fmt` formats Ion documents from Rust code and from the terminal.
-
-## Feature Flags
-
-- Active mode in this file: `dictionary-indexmap` (insertion-order dictionaries).
-- Default mode (`BTreeMap`, sorted keys) is documented in `README.md`.
-
 This file is used by `trycmd` when tests run with `--features dictionary-indexmap`.
-
-## Library
-
-```rust
-use ion_fmt::format_str;
-
-let raw = r#"
-    [A]
-    [B]
-"#;
-
-let formatted = format_str(raw).unwrap();
-```
 
 ## CLI
 
@@ -49,52 +29,10 @@ Options:
 
 ```console
 $ ion-fmt --version
-ion-fmt 0.10.0
+ion-fmt 0.10.1
 
 $ ion-fmt -V
-ion-fmt 0.10.0
-
-```
-
-```console
-$ ion-fmt format --help
-Format files in place or stdin
-
-Usage: ion-fmt format [PATH]...
-
-Arguments:
-  [PATH]...  Ion file paths. Reads stdin when omitted
-
-Options:
-  -h, --help  Print help
-
-```
-
-```console
-$ ion-fmt check --help
-Check formatting without writing changes
-
-Usage: ion-fmt check [PATH]...
-
-Arguments:
-  [PATH]...  Ion file paths. Reads stdin when omitted
-
-Options:
-  -h, --help  Print help
-
-```
-
-```console
-$ ion-fmt stdout --help
-Print formatted output to stdout
-
-Usage: ion-fmt stdout [PATH]...
-
-Arguments:
-  [PATH]...  Ion file paths. Reads stdin when omitted
-
-Options:
-  -h, --help  Print help
+ion-fmt 0.10.1
 
 ```
 

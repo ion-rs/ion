@@ -1,0 +1,29 @@
+name: ion-fmt CI
+
+on:
+  pull_request:
+    paths:
+      - "ion-fmt/**"
+      - "ion/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/crate-ci.yml"
+      - ".github/workflows/ion-fmt.yml"
+  push:
+    branches:
+      - dev
+      - master
+    paths:
+      - "ion-fmt/**"
+      - "ion/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/crate-ci.yml"
+      - ".github/workflows/ion-fmt.yml"
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: ./.github/workflows/crate-ci.yml
+    with:
+      package: ion-fmt

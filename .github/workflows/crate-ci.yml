@@ -1,0 +1,45 @@
+name: Crate CI Template
+
+on:
+  workflow_call:
+    inputs:
+      package:
+        description: Workspace package name.
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fmt:
+    name: Fmt (${{ inputs.package }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: cargo fmt -p ${{ inputs.package }} -- --check
+
+  clippy:
+    name: Clippy (${{ inputs.package }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: cargo clippy -p ${{ inputs.package }} --all-features --tests -- -D warnings
+
+  test_default:
+    name: Test Default (${{ inputs.package }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: cargo test -p ${{ inputs.package }}
+
+  test_all_features:
+    name: Test All Features (${{ inputs.package }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: cargo test -p ${{ inputs.package }} --all-features
