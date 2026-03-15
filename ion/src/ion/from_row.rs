@@ -86,7 +86,7 @@ mod tests {
     static FROM_ROW_CASE: LazyLock<TestCase> = LazyLock::new(|| TestCase {
         row: "1|foo"
             .split('|')
-            .map(|s| Value::String(s.to_owned()))
+            .map(|s| Value::String(s.into()))
             .collect(),
         expected: Foo {
             foo: 1,
@@ -102,7 +102,7 @@ mod tests {
     static PARSE_ROW_CASE: LazyLock<TestCase> = LazyLock::new(|| TestCase {
         row: "2|bar"
             .split('|')
-            .map(|s| Value::String(s.to_owned()))
+            .map(|s| Value::String(s.into()))
             .collect(),
         expected: Foo {
             foo: 2,
@@ -116,7 +116,7 @@ mod tests {
     }
 
     static FROM_ROW_ERROR_CASE: LazyLock<ErrorTestCase> = LazyLock::new(|| ErrorTestCase {
-        row: vec![Value::String("oops".to_owned())],
+        row: vec![Value::String("oops".into())],
         expected_error: "foo",
     });
     #[test_case(&*FROM_ROW_ERROR_CASE; "from row error")]

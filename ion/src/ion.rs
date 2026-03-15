@@ -193,10 +193,7 @@ mod tests {
     #[test_case(&*BOOLEAN_VALUE_CASE; "boolean")]
     #[test_case(&*INTEGER_VALUE_CASE; "integer")]
     fn value_accessors(case: &ValueConversionTestCase) {
-        assert_eq!(
-            case.expected_string.map(str::to_owned).as_ref(),
-            case.value.as_string()
-        );
+        assert_eq!(case.expected_string, case.value.as_string());
         assert_eq!(case.expected_boolean, case.value.as_boolean());
         assert_eq!(case.expected_integer, case.value.as_integer());
         assert_eq!(case.expected_str, case.value.as_str());

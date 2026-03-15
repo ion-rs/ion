@@ -322,7 +322,7 @@ impl<'a> Parser<'a> {
         self.cur.next();
 
         self.slice_to_excluding('"')
-            .map(|s| Value::String(replace_escapes(s, true)))
+            .map(|s| Value::String(replace_escapes(s, true).into()))
     }
 
     fn keyval_sep(&mut self) -> bool {
@@ -360,7 +360,7 @@ impl<'a> Parser<'a> {
                 break;
             }
 
-            row.push(Value::String(self.cell()));
+            row.push(Value::String(self.cell().into()));
         }
 
         Element::Row(row)
@@ -784,7 +784,7 @@ mod tests {
     }
 
     fn string(value: &str) -> Value {
-        Value::String(value.to_owned())
+        Value::String(value.into())
     }
 
     fn array(values: Vec<Value>) -> Value {
@@ -844,7 +844,7 @@ mod tests {
     fn finish_string(case: &FinishStringTestCase) {
         let mut parser = Parser::new(case.raw);
         let actual = parser.finish_string().map(|value| match value {
-            Value::String(value) => value,
+            Value::String(value) => value.to_string(),
             other => panic!("expected string value, got {other:?}"),
         });
         assert_eq!(case.expected.map(str::to_owned), actual);

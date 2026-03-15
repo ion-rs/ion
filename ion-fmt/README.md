@@ -1,4 +1,10 @@
-# ion-fmt
+# ion-fmt &emsp; [![crates-badge]][crates-link]
+
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/rust-lang/docs.rs/master/LICENSE)
+[![ion-fmt CI](https://github.com/ion-rs/ion/actions/workflows/ion-fmt.yml/badge.svg?branch=master)](https://github.com/ion-rs/ion/actions/workflows/ion-fmt.yml)
+
+[crates-badge]: https://img.shields.io/crates/v/ion.svg
+[crates-link]: https://crates.io/crates/ion-fmt
 
 `ion-fmt` formats Ion documents from Rust code and from the terminal.
 
@@ -9,6 +15,15 @@
 
 Default examples in this file are validated by `trycmd`.
 For `dictionary-indexmap` snapshots, see `README.indexmap.md`.
+
+## Install
+
+- Default backend (`BTreeMap`, sorted dictionary keys): `cargo install ion-fmt`
+- `dictionary-indexmap` backend (insertion-order dictionary keys): `cargo install ion-fmt --features dictionary-indexmap`
+- From a local checkout (default backend): `cargo install --path ion-fmt`
+- From a local checkout (`dictionary-indexmap`): `cargo install --path ion-fmt --features dictionary-indexmap`
+
+`ion-fmt` backend is selected at build/install time; one installed binary uses one backend.
 
 ## Library
 
@@ -29,6 +44,8 @@ let formatted = format_str(raw).unwrap();
 $ ion-fmt --help
 Formats Ion files.
 
+Build mode: default dictionary backend (BTreeMap, dictionary keys are sorted).
+
 Usage: ion-fmt [COMMAND]
 
 Commands:
@@ -38,59 +55,20 @@ Commands:
   help    Print this message or the help of the given subcommand(s)
 
 Options:
-  -h, --help     Print help
-  -V, --version  Print version
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
 
 ```
 
 ```console
 $ ion-fmt --version
-ion-fmt 0.10.0
+ion-fmt 0.11.0
 
 $ ion-fmt -V
-ion-fmt 0.10.0
-
-```
-
-```console
-$ ion-fmt format --help
-Format files in place or stdin
-
-Usage: ion-fmt format [PATH]...
-
-Arguments:
-  [PATH]...  Ion file paths. Reads stdin when omitted
-
-Options:
-  -h, --help  Print help
-
-```
-
-```console
-$ ion-fmt check --help
-Check formatting without writing changes
-
-Usage: ion-fmt check [PATH]...
-
-Arguments:
-  [PATH]...  Ion file paths. Reads stdin when omitted
-
-Options:
-  -h, --help  Print help
-
-```
-
-```console
-$ ion-fmt stdout --help
-Print formatted output to stdout
-
-Usage: ion-fmt stdout [PATH]...
-
-Arguments:
-  [PATH]...  Ion file paths. Reads stdin when omitted
-
-Options:
-  -h, --help  Print help
+ion-fmt 0.11.0
 
 ```
 
@@ -149,3 +127,7 @@ title = "rate-plan"
 
 The CLI arguments are implemented with `clap` derive and subcommands.
 When no subcommand is provided, `ion-fmt` defaults to the `stdout` command (stdin -> stdout).
+
+## Related Crates
+
+- [`ion`](https://crates.io/crates/ion): library for Ion documents.

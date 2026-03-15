@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
-    String(String),
+    String(Box<str>),
     Integer(i64),
     Float(f64),
     Boolean(bool),
@@ -14,7 +14,7 @@ pub enum Value {
 impl Value {
     #[must_use]
     pub fn new_string(value: &str) -> Self {
-        Value::String(value.to_owned())
+        Value::String(value.into())
     }
 
     #[must_use]
@@ -40,7 +40,7 @@ impl Value {
     }
 
     #[must_use]
-    pub fn as_string(&self) -> Option<&String> {
+    pub fn as_string(&self) -> Option<&str> {
         match self {
             Value::String(v) => Some(v),
             _ => None,
@@ -54,10 +54,7 @@ impl Value {
 
     #[must_use]
     pub fn as_str(&self) -> Option<&str> {
-        match self {
-            Value::String(v) => Some(v.as_str()),
-            _ => None,
-        }
+        self.as_string()
     }
 
     #[must_use]
@@ -136,7 +133,7 @@ impl FromStr for Value {
     type Err = IonError;
 
     fn from_str(s: &str) -> Result<Value, IonError> {
-        Ok(Value::String(s.to_owned()))
+        Ok(Value::String(s.into()))
     }
 }
 

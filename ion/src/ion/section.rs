@@ -358,11 +358,11 @@ mod tests {
                 | a\|b | a\\b | a\nb | a\tb | a\\\nb |
             ",
             expected_first_row: vec![
-                Value::String("a|b".to_owned()),
-                Value::String("a\\b".to_owned()),
-                Value::String("a\nb".to_owned()),
-                Value::String("a\tb".to_owned()),
-                Value::String("a\\\nb".to_owned()),
+                Value::String("a|b".into()),
+                Value::String("a\\b".into()),
+                Value::String("a\nb".into()),
+                Value::String("a\tb".into()),
+                Value::String("a\\\nb".into()),
             ],
             expected_rows: 1,
             use_rows_without_header: true,
@@ -376,9 +376,9 @@ mod tests {
                 |     | b     |     |
             ",
             expected_first_row: vec![
-                Value::String(String::new()),
-                Value::String("a|b".to_owned()),
-                Value::String("a".to_owned()),
+                Value::String(String::new().into()),
+                Value::String("a|b".into()),
+                Value::String("a".into()),
             ],
             expected_rows: 3,
             use_rows_without_header: false,
@@ -456,7 +456,7 @@ mod tests {
             .insert("name".to_owned(), Value::new_string("foo"));
 
         match section.get_mut("name") {
-            Some(Value::String(value)) => *value = "bar".to_owned(),
+            Some(Value::String(value)) => *value = "bar".into(),
             other => panic!("unexpected mutable value: {other:?}"),
         }
 

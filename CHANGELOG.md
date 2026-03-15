@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 0.11.0
+
+### Changed
+
+- Reduce string value allocation overhead by storing `Value::String` as `Box<str>`
+- Make `ion-fmt --help` report active dictionary build mode (`BTreeMap` sorted keys vs `dictionary-indexmap` insertion order)
+- Split CI into crate-specific workflows (`ion.yml`, `ion-fmt.yml`) and add a full workspace safety workflow (`workspace.yml`) for `master`
+
+### Breaking changes
+
+- `Value::as_string()` now returns `Option<&str>` instead of `Option<&String>`
+
 ## 0.10.0
 
 ### Added
@@ -31,7 +43,6 @@
 ### Breaking changes
 
 - Repository layout changed for contributors: the crate manifest moved from `./Cargo.toml` to `./ion/Cargo.toml`
-- Public library API remains unchanged
 
 ### Tests
 

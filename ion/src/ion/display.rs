@@ -142,7 +142,7 @@ mod tests {
     }
 
     fn string(value: &str) -> Value {
-        Value::String(value.to_owned())
+        Value::String(value.into())
     }
 
     fn section(entries: Vec<(&str, Value)>, rows: Vec<Vec<Value>>) -> Section {
