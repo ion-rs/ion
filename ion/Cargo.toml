@@ -6,6 +6,7 @@ edition = "2024"
 license = "MIT"
 homepage = "https://github.com/ion-rs/ion"
 repository = "https://github.com/ion-rs/ion"
+readme = "README.md"
 
 [features]
 default = []
