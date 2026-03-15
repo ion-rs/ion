@@ -127,3 +127,7 @@ title = "rate-plan"
 
 The CLI arguments are implemented with `clap` derive and subcommands.
 When no subcommand is provided, `ion-fmt` defaults to the `stdout` command (stdin -> stdout).
+
+## Related Crates
+
+- [`ion`](https://crates.io/crates/ion): library for Ion documents.
