@@ -114,7 +114,7 @@ mod tests {
     }
 
     static STRING_CASE: LazyLock<StringTestCase> = LazyLock::new(|| StringTestCase {
-        value: Value::String("foo".to_owned()),
+        value: Value::String("foo".into()),
         expected: "foo",
     });
 

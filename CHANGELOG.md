@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Changed
+
+- Reduce string value allocation overhead by storing `Value::String` as `Box<str>`
+
+### Breaking changes
+
+- `Value::as_string()` now returns `Option<&str>` instead of `Option<&String>`
+
 ## 0.10.0
 
 ### Added
@@ -31,7 +39,6 @@
 ### Breaking changes
 
 - Repository layout changed for contributors: the crate manifest moved from `./Cargo.toml` to `./ion/Cargo.toml`
-- Public library API remains unchanged
 
 ### Tests
 

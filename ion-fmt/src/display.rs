@@ -315,7 +315,7 @@ mod tests {
     }
 
     fn string(value: &str) -> Value {
-        Value::String(value.to_owned())
+        Value::String(value.into())
     }
 
     static ION_FORMAT_CASE: LazyLock<IonFormatTestCase> = LazyLock::new(|| IonFormatTestCase {
