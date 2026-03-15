@@ -1,0 +1,22 @@
+[package]
+name = "ion-fmt"
+version = "0.10.0"
+edition = "2024"
+license = "MIT"
+homepage = "https://github.com/ion-rs/ion"
+repository = "https://github.com/ion-rs/ion"
+description = "Formatting utilities for Ion documents"
+
+[features]
+default = []
+dictionary-indexmap = ["ion/dictionary-indexmap"]
+
+[dependencies]
+ion = { workspace = true }
+clap = { workspace = true }
+
+[dev-dependencies]
+indoc = { workspace = true }
+pretty_assertions = { workspace = true }
+test-case = { workspace = true }
+trycmd = { workspace = true }

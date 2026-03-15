@@ -1,5 +1,19 @@
 [workspace]
-members = ["ion"]
-default-members = ["ion"]
-# Add "ion-fmt" in a follow-up commit.
+members = ["ion", "ion-fmt"]
+default-members = ["ion", "ion-fmt"]
 resolver = "2"
+
+[workspace.dependencies]
+ion = { path = "ion" }
+
+# crates.io
+clap = { version = "4.6", features = ["derive"] }
+criterion = { version = "0.5.1", default-features = false, features = ["cargo_bench_support"] }
+indexmap = "2"
+indoc = "2"
+quickcheck = { version = "1.0.3", default-features = false }
+quickcheck_macros = { version = "1.0.0", default-features = false }
+regex = { version = "1.3.3", default-features = false, features = ["std", "unicode"] }
+pretty_assertions = "1"
+test-case = "3"
+trycmd = "1.1.1"

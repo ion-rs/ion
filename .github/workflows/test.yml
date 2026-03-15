@@ -5,21 +5,44 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  test:
-    name: Test
+  fmt:
+    name: Fmt (${{ matrix.package }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: [ion, ion-fmt]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
-      - run: cargo test --workspace --all-features
-      - run: cargo clippy --workspace --all-features --tests -- -D warnings
-      - run: cargo fmt --all -- --check
+      - run: cargo fmt -p ${{ matrix.package }} -- --check
+
+  clippy:
+    name: Clippy (${{ matrix.package }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: [ion, ion-fmt]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: cargo clippy -p ${{ matrix.package }} --all-features --tests -- -D warnings
+
+  test:
+    name: Test (${{ matrix.package }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: [ion, ion-fmt]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: cargo test -p ${{ matrix.package }} --all-features
 
   audit:
     name: Audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - run: cargo install cargo-audit --locked
       - run: cargo audit

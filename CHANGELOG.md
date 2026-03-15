@@ -2,33 +2,36 @@
 
 ## Unreleased
 
-### Changed
-
-- Convert the repository to a Cargo workspace and move the `ion` crate into `ion/`
-- Make CI commands workspace-aware (`cargo test/clippy/fmt` via workspace scope)
-
-### Breaking changes
-
-- Repository layout changed for contributors: the crate manifest moved from `./Cargo.toml` to `./ion/Cargo.toml`
-- Public library API remains unchanged
-
 ## 0.10.0
 
 ### Added
 
+- Add new `ion-fmt` workspace crate with table/document formatting utilities for `ion::Ion`
 - Add optional `dictionary-indexmap` feature to use `indexmap::IndexMap` for `Dictionary`
-- Add `Ion::get_key_value`
 - Add `ParserErrorKind` with typed parser error variants (`CannotReadValue`, `UnclosedArray`, `UnclosedDictionary`)
 - Add `ParserError::kind()` for machine-readable parser error handling
+- Add `Ion::get_key_value`
 
 ### Changed
 
+- Convert the repository to a Cargo workspace and move the `ion` crate into `ion/`
+- Move document formatting logic into the `ion-fmt` crate
+- Make CI commands workspace-aware (`cargo test/clippy/fmt` via workspace scope)
+- Split CI stages (`fmt`, `clippy`, `test`) to run per crate for both `ion` and `ion-fmt`
+- Remove editor-specific naming from the moved formatter code
+- Centralize shared dependency definitions in workspace `Cargo.toml` and inherit them at crate level
+- Add rustdoc coverage for `ion-fmt` library, formatter internals, and CLI entrypoint
 - Add support for optional leading `-` in dictionary numeric values
 - Switch benchmarks from nightly `test::Bencher` to stable `criterion`
 - Update crate to Rust edition 2024
 - Keep parser error descriptions human-facing while storing structured parser error kind internally
 - Dictionary display and serialization order now depend on the selected backend
   Default builds keep sorted `BTreeMap` behavior; `dictionary-indexmap` preserves insertion order
+
+### Breaking changes
+
+- Repository layout changed for contributors: the crate manifest moved from `./Cargo.toml` to `./ion/Cargo.toml`
+- Public library API remains unchanged
 
 ### Tests
 

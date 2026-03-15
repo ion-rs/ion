@@ -33,6 +33,47 @@ Insertion-ordered dictionaries with `IndexMap`:
 ion = { version = "0.10.0", features = ["dictionary-indexmap"] }
 ```
 
+`ion-fmt` formatter crate:
+
+```toml
+[dependencies]
+ion-fmt = "0.10.0"
+```
+
+## `ion-fmt` Library And CLI
+
+Use from Rust code:
+
+```rust
+use ion_fmt::format_str;
+
+let raw = r#"
+    [A]
+    [B]
+"#;
+
+let formatted = format_str(raw).unwrap();
+```
+
+Run from terminal (workspace):
+
+```bash
+# pipeline mode (stdin -> stdout)
+cat path/to/file.ion | cargo run -p ion-fmt --
+
+# format files in place
+cargo run -p ion-fmt -- format path/to/file.ion
+
+# check mode (exit 1 when reformat is needed)
+cargo run -p ion-fmt -- check path/to/file.ion
+
+# print formatted output
+cargo run -p ion-fmt -- stdout path/to/file.ion
+```
+
+The `ion-fmt` CLI uses `clap` derive parsing with subcommands (`format`, `check`, `stdout`).
+Without a subcommand, it defaults to stdin -> stdout formatting.
+
 ## Rust Quick Start
 
 ```rust
@@ -202,3 +243,8 @@ legend = {
 ## License
 
 Licensed under the MIT license.
+
+## Development
+
+- This repository is a Cargo workspace (`ion`, `ion-fmt`).
+- Shared dependency versions are defined at the workspace root `Cargo.toml`.
