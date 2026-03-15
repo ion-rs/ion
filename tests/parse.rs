@@ -1,3 +1,4 @@
+use indoc::indoc;
 use ion::{Ion, ion};
 use std::fs;
 use std::path::Path;
@@ -51,18 +52,26 @@ fn hotel_ion() {
 fn broken_array_and_eof() {
     let ion_err = read_err_ion("tests/data/broken_array_and_eof.ion");
 
-    let expected =
-        "ParserErrors([ParserError { lo: 55, hi: 55, desc: \"Cannot finish an array\" }])";
-
-    assert_eq!(expected, ion_err.to_string());
+    let actual = ion_err.to_string();
+    let expected = indoc! {r#"
+        Cannot finish an array at line 3, column 17 (found end of input)
+        markets = ["abc"
+                        ^
+    "#}
+    .trim_end();
+    assert_eq!(expected, actual);
 }
 
 #[test]
 fn broken_dictionary_and_eof() {
     let ion_err = read_err_ion("tests/data/broken_dictionary_and_eof.ion");
 
-    let expected =
-        "ParserErrors([ParserError { lo: 67, hi: 67, desc: \"Cannot finish a dictionary\" }])";
-
-    assert_eq!(expected, ion_err.to_string());
+    let actual = ion_err.to_string();
+    let expected = indoc! {r#"
+        Cannot finish a dictionary at line 3, column 24 (found end of input)
+        markets = { foo = "bar"
+                               ^
+    "#}
+    .trim_end();
+    assert_eq!(expected, actual);
 }

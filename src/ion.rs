@@ -111,6 +111,7 @@ macro_rules! ion_filtered {
 #[cfg(test)]
 mod tests {
     use crate::{Ion, IonError, Section, Value};
+    use indoc::indoc;
     use pretty_assertions::assert_eq;
     use std::collections::BTreeMap;
     use std::sync::LazyLock;
@@ -379,9 +380,19 @@ mod tests {
             a = 2
         ",
         expected: if cfg!(feature = "dictionary-indexmap") {
-            "[ORDER]\nb = 1\na = 2\n\n"
+            indoc! {r"
+                [ORDER]
+                b = 1
+                a = 2
+
+            "}
         } else {
-            "[ORDER]\na = 2\nb = 1\n\n"
+            indoc! {r"
+                [ORDER]
+                a = 2
+                b = 1
+
+            "}
         },
     };
 

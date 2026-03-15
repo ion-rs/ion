@@ -84,7 +84,7 @@ assert!(ion.get("KEPT").is_some());
 `Dictionary` uses:
 
 - `BTreeMap` by default
-- `IndexMap` with `dictionary-indexmap`
+- `IndexMap` with `dictionary-indexmap` feature flag
 
 This affects ordering in:
 

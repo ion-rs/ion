@@ -487,23 +487,112 @@ impl<'a> Parser<'a> {
     }
 
     fn add_error(&mut self, message: &str) {
-        let mut it = self.cur.clone();
-        let lo = it.next().map_or(self.input.len(), |p| p.0);
-        let hi = it.next().map_or(self.input.len(), |p| p.0);
+        let pos = self.cur.peek().map_or(self.input.len(), |(idx, _)| *idx);
+        let (line, column) = self.line_column_at(pos);
+        let (line_start, line_end) = self.line_bounds_at(pos);
+        let source_line = self.input[line_start..line_end].to_owned();
+        let found = self.cur.peek().map(|(_, ch)| *ch);
 
         self.errors.push(ParserError {
-            lo,
-            hi,
             desc: message.to_owned(),
+            line,
+            column,
+            source_line,
+            found,
         });
+    }
+
+    fn line_column_at(&self, byte_idx: usize) -> (usize, usize) {
+        let target = byte_idx.min(self.input.len());
+        let bytes = self.input.as_bytes();
+        let mut i = 0;
+        let mut line = 1;
+        let mut column = 1;
+
+        while i < target {
+            match bytes[i] {
+                b'\r' => {
+                    line += 1;
+                    column = 1;
+                    i += 1;
+                    if i < target && bytes[i] == b'\n' {
+                        i += 1;
+                    }
+                }
+                b'\n' => {
+                    line += 1;
+                    column = 1;
+                    i += 1;
+                }
+                _ => match self.input[i..].chars().next() {
+                    Some(ch) => {
+                        i += ch.len_utf8();
+                        column += 1;
+                    }
+                    None => break,
+                },
+            }
+        }
+
+        (line, column)
+    }
+
+    fn line_bounds_at(&self, byte_idx: usize) -> (usize, usize) {
+        let idx = byte_idx.min(self.input.len());
+        let mut start = 0;
+
+        for (i, ch) in self.input[..idx].char_indices() {
+            if ch == '\n' || ch == '\r' {
+                start = i + ch.len_utf8();
+            }
+        }
+
+        let mut end = self.input.len();
+        for (offset, ch) in self.input[idx..].char_indices() {
+            if ch == '\n' || ch == '\r' {
+                end = idx + offset;
+                break;
+            }
+        }
+
+        (start, end)
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct ParserError {
-    pub lo: usize,
-    pub hi: usize,
-    pub desc: String,
+    desc: String,
+    line: usize,
+    column: usize,
+    source_line: String,
+    found: Option<char>,
+}
+
+impl ParserError {
+    #[must_use]
+    pub fn description(&self) -> &str {
+        &self.desc
+    }
+
+    #[must_use]
+    pub fn line(&self) -> usize {
+        self.line
+    }
+
+    #[must_use]
+    pub fn column(&self) -> usize {
+        self.column
+    }
+
+    #[must_use]
+    pub fn source_line(&self) -> &str {
+        &self.source_line
+    }
+
+    #[must_use]
+    pub fn found(&self) -> Option<char> {
+        self.found
+    }
 }
 
 impl error::Error for ParserError {
@@ -514,7 +603,29 @@ impl error::Error for ParserError {
 
 impl fmt::Display for ParserError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
+        write!(
+            f,
+            "{} at line {}, column {}",
+            self.desc, self.line, self.column
+        )?;
+
+        if let Some(found) = self.found {
+            write!(f, " (found '{}')", found.escape_default())?;
+        } else {
+            write!(f, " (found end of input)")?;
+        }
+
+        if !self.source_line.is_empty() {
+            write!(
+                f,
+                "\n{}\n{:>width$}^",
+                self.source_line,
+                "",
+                width = self.column.saturating_sub(1)
+            )?;
+        }
+
+        Ok(())
     }
 }
 
@@ -624,6 +735,9 @@ mod tests {
     struct ValueErrorTestCase {
         raw: &'static str,
         expected_error: &'static str,
+        expected_line: usize,
+        expected_column: usize,
+        expected_found: Option<char>,
     }
 
     #[derive(Debug)]
@@ -1340,6 +1454,9 @@ mod tests {
     const VALUE_ERROR_INVALID_SCALAR: ValueErrorTestCase = ValueErrorTestCase {
         raw: "?",
         expected_error: "Cannot read a value",
+        expected_line: 1,
+        expected_column: 1,
+        expected_found: Some('?'),
     };
 
     #[test_case(&VALUE_ERROR_INVALID_SCALAR; "invalid scalar")]
@@ -1347,7 +1464,12 @@ mod tests {
         let mut parser = Parser::new(case.raw);
         assert_eq!(None, parser.value());
         assert_eq!(1, parser.errors.len());
-        assert_eq!(case.expected_error, parser.errors[0].desc);
+        let error = &parser.errors[0];
+        assert_eq!(case.expected_error, error.description());
+        assert_eq!(case.expected_line, error.line());
+        assert_eq!(case.expected_column, error.column());
+        assert_eq!(case.expected_found, error.found());
+        assert!(error.to_string().contains("line 1, column 1"));
     }
 
     const BOOLEAN_INVALID_LITERAL: BooleanTestCase = BooleanTestCase {
