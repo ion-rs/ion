@@ -57,6 +57,46 @@ enum CliCommand {
     },
 }
 
+fn main() {
+    let parsed = Cli::try_parse().unwrap_or_else(|error| error.exit());
+
+    match run_with_cli(&parsed) {
+        Ok(code) => std::process::exit(code),
+        Err(error) => {
+            eprintln!("{error}");
+            std::process::exit(2);
+        }
+    }
+}
+
+/// Dispatches execution by command and processes stdin or paths as needed.
+fn run_with_cli(parsed: &Cli) -> Result<i32, String> {
+    match parsed.command.as_ref() {
+        Some(CliCommand::Format { paths }) => {
+            if paths.is_empty() {
+                run_with_stdin(Mode::FormatInPlace)
+            } else {
+                Ok(run_with_paths(paths, Mode::FormatInPlace))
+            }
+        }
+        Some(CliCommand::Check { paths }) => {
+            if paths.is_empty() {
+                run_with_stdin(Mode::Check)
+            } else {
+                Ok(run_with_paths(paths, Mode::Check))
+            }
+        }
+        Some(CliCommand::Stdout { paths }) => {
+            if paths.is_empty() {
+                run_with_stdin(Mode::Stdout)
+            } else {
+                Ok(run_with_paths(paths, Mode::Stdout))
+            }
+        }
+        None => run_with_stdin(Mode::Stdout),
+    }
+}
+
 /// Runs formatter against stdin for a selected mode.
 fn run_with_stdin(mode: Mode) -> Result<i32, String> {
     let mut raw = String::new();
@@ -121,44 +161,4 @@ fn run_with_paths(paths: &[PathBuf], mode: Mode) -> i32 {
     }
 
     i32::from(has_errors || (mode == Mode::Check && needs_formatting))
-}
-
-/// Dispatches execution by command and processes stdin or paths as needed.
-fn run_with_cli(parsed: &Cli) -> Result<i32, String> {
-    match parsed.command.as_ref() {
-        Some(CliCommand::Format { paths }) => {
-            if paths.is_empty() {
-                run_with_stdin(Mode::FormatInPlace)
-            } else {
-                Ok(run_with_paths(paths, Mode::FormatInPlace))
-            }
-        }
-        Some(CliCommand::Check { paths }) => {
-            if paths.is_empty() {
-                run_with_stdin(Mode::Check)
-            } else {
-                Ok(run_with_paths(paths, Mode::Check))
-            }
-        }
-        Some(CliCommand::Stdout { paths }) => {
-            if paths.is_empty() {
-                run_with_stdin(Mode::Stdout)
-            } else {
-                Ok(run_with_paths(paths, Mode::Stdout))
-            }
-        }
-        None => run_with_stdin(Mode::Stdout),
-    }
-}
-
-fn main() {
-    let parsed = Cli::try_parse().unwrap_or_else(|error| error.exit());
-
-    match run_with_cli(&parsed) {
-        Ok(code) => std::process::exit(code),
-        Err(error) => {
-            eprintln!("{error}");
-            std::process::exit(2);
-        }
-    }
 }
