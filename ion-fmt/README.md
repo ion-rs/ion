@@ -3,7 +3,7 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/rust-lang/docs.rs/master/LICENSE)
 [![ion-fmt CI](https://github.com/ion-rs/ion/actions/workflows/ion-fmt.yml/badge.svg?branch=master)](https://github.com/ion-rs/ion/actions/workflows/ion-fmt.yml)
 
-[crates-badge]: https://img.shields.io/crates/v/ion.svg
+[crates-badge]: https://img.shields.io/crates/v/ion-fmt.svg
 [crates-link]: https://crates.io/crates/ion-fmt
 
 `ion-fmt` formats Ion documents from Rust code and from the terminal.
