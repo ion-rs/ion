@@ -5,12 +5,6 @@ second = "another"
 third = "hello \\n world"
 bool = true
 
-[mixed]
-a = 1
-B = 2
-| this | :) |
-| that |
-
 [table]
 | abc | def |
 | --- | --- |
@@ -18,3 +12,9 @@ B = 2
 | 1 | 2 |
 | 2 | 3 |
 | 4 | one:"hello \" world" two:"hello \| world" three: "hello \\n world" |
+
+[mixed]
+a = 1
+B = 2
+| this | :) |
+| that |

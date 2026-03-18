@@ -10,18 +10,17 @@ pub use self::from_row::*;
 pub use self::ion_error::*;
 pub use self::section::*;
 pub use self::value::*;
-use crate::Parser;
-use std::collections::BTreeMap;
+use crate::{Parser, Sections};
 use std::str;
 
 #[derive(Clone, Debug)]
 pub struct Ion {
-    sections: BTreeMap<String, Section>,
+    sections: Sections,
 }
 
 impl Ion {
     #[must_use]
-    pub fn new(sections: BTreeMap<String, Section>) -> Ion {
+    pub fn new(sections: Sections) -> Ion {
         Ion { sections }
     }
 
@@ -72,7 +71,15 @@ impl Ion {
     }
 
     pub fn remove(&mut self, key: &str) -> Option<Section> {
-        self.sections.remove(key)
+        #[cfg(feature = "dictionary-indexmap")]
+        {
+            self.sections.shift_remove(key)
+        }
+
+        #[cfg(not(feature = "dictionary-indexmap"))]
+        {
+            self.sections.remove(key)
+        }
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (&String, &Section)> {
@@ -110,10 +117,9 @@ macro_rules! ion_filtered {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Ion, IonError, Section, Value};
+    use crate::{Ion, IonError, Section, Sections, Value};
     use indoc::indoc;
     use pretty_assertions::assert_eq;
-    use std::collections::BTreeMap;
     use std::sync::LazyLock;
     use test_case::test_case;
 
@@ -162,6 +168,14 @@ mod tests {
             section.dictionary.insert(key.to_owned(), value);
         }
         section
+    }
+
+    fn sections(entries: Vec<(&str, Section)>) -> Sections {
+        let mut sections = Sections::new();
+        for (name, section) in entries {
+            sections.insert(name.to_owned(), section);
+        }
+        sections
     }
 
     static STRING_VALUE_CASE: LazyLock<ValueConversionTestCase> =
@@ -273,8 +287,8 @@ mod tests {
     }
 
     static ION_API_PRESENT_CASE: LazyLock<IonApiTestCase> = LazyLock::new(|| {
-        let sections = BTreeMap::from([(
-            "FOO".to_owned(),
+        let sections = sections(vec![(
+            "FOO",
             section(vec![("name", Value::new_string("foo"))]),
         )]);
         IonApiTestCase {
@@ -286,7 +300,7 @@ mod tests {
         }
     });
     static ION_API_MISSING_CASE: LazyLock<IonApiTestCase> = LazyLock::new(|| {
-        let sections = BTreeMap::from([("FOO".to_owned(), section(vec![]))]);
+        let sections = sections(vec![("FOO", section(vec![]))]);
         IonApiTestCase {
             ion: Ion::new(sections),
             key: "BAR",
@@ -319,8 +333,8 @@ mod tests {
 
     #[test]
     fn ion_get_mut_and_remove() {
-        let sections = BTreeMap::from([(
-            "FOO".to_owned(),
+        let sections = sections(vec![(
+            "FOO",
             section(vec![("name", Value::new_string("foo"))]),
         )]);
         let mut ion = Ion::new(sections);
@@ -372,20 +386,32 @@ mod tests {
 
     const ORDERING_CASE: OrderingTestCase = OrderingTestCase {
         raw: r"
-            [ORDER]
+            [BETA]
             b = 1
             a = 2
+
+            [ALPHA]
+            d = 4
+            c = 3
         ",
         expected: if cfg!(feature = "dictionary-indexmap") {
             indoc! {r"
-                [ORDER]
+                [BETA]
                 b = 1
                 a = 2
+
+                [ALPHA]
+                d = 4
+                c = 3
 
             "}
         } else {
             indoc! {r"
-                [ORDER]
+                [ALPHA]
+                c = 3
+                d = 4
+
+                [BETA]
                 a = 2
                 b = 1
 
@@ -393,8 +419,8 @@ mod tests {
         },
     };
 
-    #[test_case(&ORDERING_CASE; "dictionary ordering depends on backend")]
-    fn dictionary_ordering(case: &OrderingTestCase) {
+    #[test_case(&ORDERING_CASE; "section and dictionary ordering depend on backend")]
+    fn document_ordering(case: &OrderingTestCase) {
         let ion = case.raw.parse::<Ion>().unwrap();
         let actual = ion.to_string();
         assert_eq!(case.expected, actual);

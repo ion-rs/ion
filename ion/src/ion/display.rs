@@ -154,6 +154,14 @@ mod tests {
         section
     }
 
+    fn sections(entries: Vec<(&str, Section)>) -> crate::Sections {
+        let mut sections = crate::Sections::new();
+        for (name, section) in entries {
+            sections.insert(name.to_owned(), section);
+        }
+        sections
+    }
+
     fn dictionary(entries: Vec<(&str, Value)>) -> Value {
         let mut dictionary = crate::Dictionary::new();
         for (key, value) in entries {
@@ -222,26 +230,34 @@ mod tests {
     }
 
     static ION_DISPLAY_CASE: LazyLock<IonDisplayTestCase> = LazyLock::new(|| {
-        let sections = std::collections::BTreeMap::from([
+        let sections = sections(vec![
             (
-                "ALPHA".to_owned(),
-                section(vec![("name", string("foo"))], vec![]),
-            ),
-            (
-                "BETA".to_owned(),
+                "BETA",
                 section(vec![], vec![vec![string("one"), string("two")]]),
             ),
+            ("ALPHA", section(vec![("name", string("foo"))], vec![])),
         ]);
         IonDisplayTestCase {
             ion: Ion::new(sections),
-            expected: indoc! {r#"
-                [ALPHA]
-                name = "foo"
+            expected: if cfg!(feature = "dictionary-indexmap") {
+                indoc! {r#"
+                    [BETA]
+                    | one | two |
 
-                [BETA]
-                | one | two |
+                    [ALPHA]
+                    name = "foo"
 
-            "#},
+                "#}
+            } else {
+                indoc! {r#"
+                    [ALPHA]
+                    name = "foo"
+
+                    [BETA]
+                    | one | two |
+
+                "#}
+            },
         }
     });
 

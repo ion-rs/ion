@@ -8,7 +8,7 @@ This file is used by `trycmd` when tests run with `--features dictionary-indexma
 $ ion-fmt --help
 Formats Ion files.
 
-Build mode: dictionary-indexmap (dictionary keys preserve insertion order).
+Build mode: dictionary-indexmap (section names and dictionary keys preserve insertion order).
 
 Usage: ion-fmt [COMMAND]
 
@@ -38,14 +38,6 @@ ion-fmt 0.11.1
 
 ```console
 $ ion-fmt stdout tests/readme/unformatted.ion
-[WITHOUT_HEADER]
-source = "legacy"
-enabled = false
-batch = 7
-| 1 | alpha | PL |  11.2 |  ok  |
-|---|-------|----|-------|------|
-| 3 | gamma | UK | 13.75 | ok   |
-
 [WITH_HEADER]
 title = "rate-plan"
 active = true
@@ -55,6 +47,14 @@ priority = 10
 | 20260101 | PL     | DBL  |  120.5 |     3 |
 | 20260102 | DE     | SGL  |     99 |    12 |
 | 20260103 | UK     | APP  | 145.25 |     2 |
+
+[WITHOUT_HEADER]
+source = "legacy"
+enabled = false
+batch = 7
+| 1 | alpha | PL |  11.2 |  ok  |
+|---|-------|----|-------|------|
+| 3 | gamma | UK | 13.75 | ok   |
 
 
 ```
@@ -70,14 +70,6 @@ $ ion-fmt check tests/readme/formatted.ion
 
 ```console
 $ cat tests/readme/unformatted.ion | ion-fmt
-[WITHOUT_HEADER]
-source = "legacy"
-enabled = false
-batch = 7
-| 1 | alpha | PL |  11.2 |  ok  |
-|---|-------|----|-------|------|
-| 3 | gamma | UK | 13.75 | ok   |
-
 [WITH_HEADER]
 title = "rate-plan"
 active = true
@@ -87,6 +79,14 @@ priority = 10
 | 20260101 | PL     | DBL  |  120.5 |     3 |
 | 20260102 | DE     | SGL  |     99 |    12 |
 | 20260103 | UK     | APP  | 145.25 |     2 |
+
+[WITHOUT_HEADER]
+source = "legacy"
+enabled = false
+batch = 7
+| 1 | alpha | PL |  11.2 |  ok  |
+|---|-------|----|-------|------|
+| 3 | gamma | UK | 13.75 | ok   |
 ```
 
 Interactive shell example when no file paths and no piped stdin are provided:

@@ -1,5 +1,4 @@
-use crate::{Dictionary, Section, Value};
-use std::collections::BTreeMap;
+use crate::{Dictionary, Section, Sections, Value};
 use std::iter::Peekable;
 use std::{error, fmt, str};
 
@@ -377,8 +376,8 @@ impl<'a> Parser<'a> {
         )
     }
 
-    pub fn read(&mut self) -> Option<BTreeMap<String, Section>> {
-        let mut map = BTreeMap::new();
+    pub fn read(&mut self) -> Option<Sections> {
+        let mut map = Sections::new();
         let mut section = Section::with_capacity(self.section_capacity);
         let mut name = None;
 
@@ -690,9 +689,8 @@ fn replace_escapes(s: &str, escape_quote: bool) -> String {
 mod tests {
     use super::Element::{self, Comment, Entry, Row};
     use super::ParserErrorKind;
-    use crate::{Dictionary, Parser, Section, Value};
+    use crate::{Dictionary, Parser, Section, Sections, Value};
     use pretty_assertions::assert_eq;
-    use std::collections::BTreeMap;
     use std::sync::LazyLock;
     use test_case::test_case;
 
@@ -754,7 +752,13 @@ mod tests {
     struct ReadTestCase {
         raw: &'static str,
         accepted_sections: &'static [&'static str],
-        expected: Option<BTreeMap<String, Section>>,
+        expected: Option<Sections>,
+    }
+
+    #[derive(Debug)]
+    struct SectionOrderingTestCase {
+        raw: &'static str,
+        expected: &'static [&'static str],
     }
 
     #[derive(Debug)]
@@ -812,8 +816,8 @@ mod tests {
         section
     }
 
-    fn sections(entries: Vec<(&str, Section)>) -> BTreeMap<String, Section> {
-        let mut sections = BTreeMap::new();
+    fn sections(entries: Vec<(&str, Section)>) -> Sections {
+        let mut sections = Sections::new();
         for (name, section) in entries {
             sections.insert(name.to_owned(), section);
         }
@@ -1327,7 +1331,7 @@ mod tests {
             | ncol1 | ncol2 |
         "#,
         accepted_sections: &["ACCEPTED"],
-        expected: Some(BTreeMap::new()),
+        expected: Some(Sections::new()),
     });
     static READ_FILTER_ROOT_THEN_ACCEPTED: LazyLock<ReadTestCase> =
         LazyLock::new(|| ReadTestCase {
@@ -1354,7 +1358,7 @@ mod tests {
                 | col1 | col2|
             "#,
             accepted_sections: &["ACCEPTED"],
-            expected: Some(BTreeMap::new()),
+            expected: Some(Sections::new()),
         });
     static READ_FILTER_ACCEPTED_ONLY: LazyLock<ReadTestCase> = LazyLock::new(|| ReadTestCase {
         raw: r#"
@@ -1429,7 +1433,7 @@ mod tests {
             | col1 | col2|
         "#,
         accepted_sections: &["ACCEPTED"],
-        expected: Some(BTreeMap::new()),
+        expected: Some(Sections::new()),
     });
     static READ_FILTER_FILTERED_THEN_ACCEPTED: LazyLock<ReadTestCase> =
         LazyLock::new(|| ReadTestCase {
@@ -1476,6 +1480,28 @@ mod tests {
         };
 
         assert_eq!(case.expected, actual);
+    }
+
+    const SECTION_ORDERING_CASE: SectionOrderingTestCase = SectionOrderingTestCase {
+        raw: r"
+            [BETA]
+            key = 1
+
+            [ALPHA]
+            key = 2
+        ",
+        expected: if cfg!(feature = "dictionary-indexmap") {
+            &["BETA", "ALPHA"]
+        } else {
+            &["ALPHA", "BETA"]
+        },
+    };
+
+    #[test_case(&SECTION_ORDERING_CASE; "section ordering depends on backend")]
+    fn section_ordering(case: &SectionOrderingTestCase) {
+        let sections = Parser::new(case.raw).read().unwrap();
+        let actual = sections.keys().map(String::as_str).collect::<Vec<_>>();
+        assert_eq!(case.expected, actual.as_slice());
     }
 
     const VALUE_ERROR_INVALID_SCALAR: ValueErrorTestCase = ValueErrorTestCase {

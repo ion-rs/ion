@@ -10,16 +10,16 @@
 
 ## Feature Flags
 
-- `default`: uses `BTreeMap` in `ion` and prints dictionary keys in sorted order.
-- `dictionary-indexmap`: uses `IndexMap` in `ion` and preserves insertion order.
+- `default`: uses `BTreeMap` in `ion` and prints section names and dictionary keys in sorted order.
+- `dictionary-indexmap`: uses `IndexMap` in `ion` and preserves section and dictionary insertion order.
 
 Default examples in this file are validated by `trycmd`.
 For `dictionary-indexmap` snapshots, see `README.indexmap.md`.
 
 ## Install
 
-- Default backend (`BTreeMap`, sorted dictionary keys): `cargo install ion-fmt`
-- `dictionary-indexmap` backend (insertion-order dictionary keys): `cargo install ion-fmt --features dictionary-indexmap`
+- Default backend (`BTreeMap`, sorted section names and dictionary keys): `cargo install ion-fmt`
+- `dictionary-indexmap` backend (insertion-order sections and dictionaries): `cargo install ion-fmt --features dictionary-indexmap`
 - From a local checkout (default backend): `cargo install --path ion-fmt`
 - From a local checkout (`dictionary-indexmap`): `cargo install --path ion-fmt --features dictionary-indexmap`
 
@@ -44,7 +44,7 @@ let formatted = format_str(raw).unwrap();
 $ ion-fmt --help
 Formats Ion files.
 
-Build mode: default dictionary backend (BTreeMap, dictionary keys are sorted).
+Build mode: default dictionary backend (BTreeMap, section names and dictionary keys are sorted).
 
 Usage: ion-fmt [COMMAND]
 
