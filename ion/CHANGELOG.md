@@ -5,9 +5,15 @@ Repository and workspace maintenance changes are intentionally omitted.
 
 ## Unreleased
 
+## 0.12.0
+
 ### Changed
 
 - Extend the `dictionary-indexmap` backend to top-level `Sections`, so section iteration and serialization order now follow the selected backend too
+
+### Breaking changes
+
+- With `dictionary-indexmap` enabled, top-level section iteration and document serialization now preserve insertion order instead of remaining sorted
 
 ## 0.11.0
 

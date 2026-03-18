@@ -4,7 +4,7 @@ default-members = ["ion", "ion-fmt"]
 resolver = "2"
 
 [workspace.dependencies]
-ion = { version = "0.11.0", path = "ion" }
+ion = { version = "0.12.0", path = "ion" }
 
 # crates.io
 clap = { version = "4.6", features = ["derive"] }
