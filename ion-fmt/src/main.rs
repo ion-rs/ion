@@ -19,12 +19,12 @@ use std::path::PathBuf;
 #[cfg(feature = "dictionary-indexmap")]
 const CLI_ABOUT: &str = "Formats Ion files.";
 #[cfg(feature = "dictionary-indexmap")]
-const CLI_LONG_ABOUT: &str = "Formats Ion files.\n\nBuild mode: dictionary-indexmap (dictionary keys preserve insertion order).";
+const CLI_LONG_ABOUT: &str = "Formats Ion files.\n\nBuild mode: dictionary-indexmap (section names and dictionary keys preserve insertion order).";
 
 #[cfg(not(feature = "dictionary-indexmap"))]
 const CLI_ABOUT: &str = "Formats Ion files.";
 #[cfg(not(feature = "dictionary-indexmap"))]
-const CLI_LONG_ABOUT: &str = "Formats Ion files.\n\nBuild mode: default dictionary backend (BTreeMap, dictionary keys are sorted).";
+const CLI_LONG_ABOUT: &str = "Formats Ion files.\n\nBuild mode: default dictionary backend (BTreeMap, section names and dictionary keys are sorted).";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Mode {

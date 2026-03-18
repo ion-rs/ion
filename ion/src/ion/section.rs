@@ -1,18 +1,26 @@
 use crate::{Dictionary, FromIon, IonError, Row, Value};
 use std::vec;
 
+/// A named Ion section.
+///
+/// A section can contain both key/value fields in [`dictionary`](Self::dictionary) and
+/// tabular [`rows`](Self::rows).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Section {
+    /// Dictionary fields stored above the tabular rows.
     pub dictionary: Dictionary,
+    /// Tabular data rows for the section.
     pub rows: Vec<Row>,
 }
 
 impl Section {
+    /// Creates an empty section.
     #[must_use]
     pub fn new() -> Section {
         Self::with_capacity(1)
     }
 
+    /// Creates an empty section with row capacity `n`.
     #[must_use]
     pub fn with_capacity(n: usize) -> Section {
         Self {
@@ -21,6 +29,7 @@ impl Section {
         }
     }
 
+    /// Returns the dictionary field with the provided name.
     #[must_use]
     pub fn get(&self, name: &str) -> Option<&Value> {
         self.dictionary.get(name)
@@ -42,6 +51,12 @@ impl Section {
             .ok_or_else(|| IonError::MissingValue(key.to_owned()))
     }
 
+    /// Returns row data, skipping a table header row when one is present.
+    ///
+    /// A header is detected as:
+    ///
+    /// - row 0: header labels
+    /// - row 1: a separator row made only of `-` strings
     #[must_use]
     pub fn rows_without_header(&self) -> &[Row] {
         if self.rows.len() > 1 {
@@ -65,11 +80,13 @@ impl Section {
         F::from_ion(self)
     }
 
+    /// Iterates over [`rows_without_header`](Self::rows_without_header).
     pub fn iter(&self) -> std::slice::Iter<'_, Row> {
         self.rows_without_header().iter()
     }
 }
 
+/// Owning iterator over section rows.
 pub struct IntoIter<T> {
     iter: vec::IntoIter<T>,
 }

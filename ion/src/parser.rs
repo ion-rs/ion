@@ -1,16 +1,24 @@
-use crate::{Dictionary, Section, Value};
-use std::collections::BTreeMap;
+use crate::{Dictionary, Section, Sections, Value};
 use std::iter::Peekable;
 use std::{error, fmt, str};
 
+/// Low-level parser output item.
 #[derive(Debug, PartialEq)]
 pub enum Element {
+    /// A section header like `[APP]`.
     Section(String),
+    /// A table row.
     Row(Vec<Value>),
+    /// A dictionary entry like `key = value`.
     Entry(String, Value),
+    /// A comment line without the leading `#`.
     Comment(String),
 }
 
+/// Stateful parser for Ion text.
+///
+/// `Parser` implements [`Iterator`] over [`Element`] and also exposes [`read`](Self::read)
+/// for collecting a full [`Sections`] map.
 pub struct Parser<'a> {
     input: &'a str,
     cur: Peekable<str::CharIndices<'a>>,
@@ -64,28 +72,33 @@ impl Iterator for Parser<'_> {
 }
 
 impl<'a> Parser<'a> {
+    /// Creates a parser for the full document.
     #[must_use]
     pub fn new(s: &'a str) -> Self {
         Self::new_filtered_opt(s, None)
     }
 
+    /// Creates a parser that keeps only selected section names.
     #[must_use]
     pub fn new_filtered(s: &'a str, accepted_sections: Vec<&'a str>) -> Self {
         Self::new_filtered_opt(s, Some(accepted_sections))
     }
 
+    /// Sets the initial row capacity used for each parsed section.
     #[must_use]
     pub fn with_section_capacity(mut self, section_capacity: usize) -> Self {
         self.section_capacity = section_capacity;
         self
     }
 
+    /// Sets the initial cell capacity used for parsed rows.
     #[must_use]
     pub fn with_row_capacity(mut self, row_capacity: usize) -> Self {
         self.row_capacity = row_capacity;
         self
     }
 
+    /// Sets the initial element capacity used for parsed arrays.
     #[must_use]
     pub fn with_array_capacity(mut self, array_capacity: usize) -> Self {
         self.array_capacity = array_capacity;
@@ -377,8 +390,12 @@ impl<'a> Parser<'a> {
         )
     }
 
-    pub fn read(&mut self) -> Option<BTreeMap<String, Section>> {
-        let mut map = BTreeMap::new();
+    /// Parses the remaining input into a [`Sections`] map.
+    ///
+    /// Returns `None` when one or more parser errors were recorded. The collected errors
+    /// remain available in the parser and are surfaced by [`Ion`](crate::Ion) parsing APIs.
+    pub fn read(&mut self) -> Option<Sections> {
+        let mut map = Sections::new();
         let mut section = Section::with_capacity(self.section_capacity);
         let mut name = None;
 
@@ -559,14 +576,19 @@ impl<'a> Parser<'a> {
     }
 }
 
+/// Machine-readable parser error category.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ParserErrorKind {
+    /// The parser could not determine a valid value at the current input position.
     CannotReadValue,
+    /// The parser reached the end of input before closing an array.
     UnclosedArray,
+    /// The parser reached the end of input before closing a dictionary.
     UnclosedDictionary,
 }
 
 impl ParserErrorKind {
+    /// Returns the human-facing description for this error kind.
     #[must_use]
     pub const fn description(self) -> &'static str {
         match self {
@@ -577,6 +599,7 @@ impl ParserErrorKind {
     }
 }
 
+/// Structured parser error with location and source context.
 #[derive(Clone, Debug)]
 pub struct ParserError {
     kind: ParserErrorKind,
@@ -587,31 +610,37 @@ pub struct ParserError {
 }
 
 impl ParserError {
+    /// Returns the machine-readable error kind.
     #[must_use]
     pub fn kind(&self) -> ParserErrorKind {
         self.kind
     }
 
+    /// Returns the human-facing error message.
     #[must_use]
     pub fn description(&self) -> &str {
         self.kind.description()
     }
 
+    /// Returns the 1-based line where the error was detected.
     #[must_use]
     pub fn line(&self) -> usize {
         self.line
     }
 
+    /// Returns the 1-based column where the error was detected.
     #[must_use]
     pub fn column(&self) -> usize {
         self.column
     }
 
+    /// Returns the full source line that contains the error.
     #[must_use]
     pub fn source_line(&self) -> &str {
         &self.source_line
     }
 
+    /// Returns the character found at the error location, or `None` at end of input.
     #[must_use]
     pub fn found(&self) -> Option<char> {
         self.found
@@ -690,9 +719,8 @@ fn replace_escapes(s: &str, escape_quote: bool) -> String {
 mod tests {
     use super::Element::{self, Comment, Entry, Row};
     use super::ParserErrorKind;
-    use crate::{Dictionary, Parser, Section, Value};
+    use crate::{Dictionary, Parser, Section, Sections, Value};
     use pretty_assertions::assert_eq;
-    use std::collections::BTreeMap;
     use std::sync::LazyLock;
     use test_case::test_case;
 
@@ -754,7 +782,13 @@ mod tests {
     struct ReadTestCase {
         raw: &'static str,
         accepted_sections: &'static [&'static str],
-        expected: Option<BTreeMap<String, Section>>,
+        expected: Option<Sections>,
+    }
+
+    #[derive(Debug)]
+    struct SectionOrderingTestCase {
+        raw: &'static str,
+        expected: &'static [&'static str],
     }
 
     #[derive(Debug)]
@@ -812,8 +846,8 @@ mod tests {
         section
     }
 
-    fn sections(entries: Vec<(&str, Section)>) -> BTreeMap<String, Section> {
-        let mut sections = BTreeMap::new();
+    fn sections(entries: Vec<(&str, Section)>) -> Sections {
+        let mut sections = Sections::new();
         for (name, section) in entries {
             sections.insert(name.to_owned(), section);
         }
@@ -1327,7 +1361,7 @@ mod tests {
             | ncol1 | ncol2 |
         "#,
         accepted_sections: &["ACCEPTED"],
-        expected: Some(BTreeMap::new()),
+        expected: Some(Sections::new()),
     });
     static READ_FILTER_ROOT_THEN_ACCEPTED: LazyLock<ReadTestCase> =
         LazyLock::new(|| ReadTestCase {
@@ -1354,7 +1388,7 @@ mod tests {
                 | col1 | col2|
             "#,
             accepted_sections: &["ACCEPTED"],
-            expected: Some(BTreeMap::new()),
+            expected: Some(Sections::new()),
         });
     static READ_FILTER_ACCEPTED_ONLY: LazyLock<ReadTestCase> = LazyLock::new(|| ReadTestCase {
         raw: r#"
@@ -1429,7 +1463,7 @@ mod tests {
             | col1 | col2|
         "#,
         accepted_sections: &["ACCEPTED"],
-        expected: Some(BTreeMap::new()),
+        expected: Some(Sections::new()),
     });
     static READ_FILTER_FILTERED_THEN_ACCEPTED: LazyLock<ReadTestCase> =
         LazyLock::new(|| ReadTestCase {
@@ -1476,6 +1510,28 @@ mod tests {
         };
 
         assert_eq!(case.expected, actual);
+    }
+
+    const SECTION_ORDERING_CASE: SectionOrderingTestCase = SectionOrderingTestCase {
+        raw: r"
+            [BETA]
+            key = 1
+
+            [ALPHA]
+            key = 2
+        ",
+        expected: if cfg!(feature = "dictionary-indexmap") {
+            &["BETA", "ALPHA"]
+        } else {
+            &["ALPHA", "BETA"]
+        },
+    };
+
+    #[test_case(&SECTION_ORDERING_CASE; "section ordering depends on backend")]
+    fn section_ordering(case: &SectionOrderingTestCase) {
+        let sections = Parser::new(case.raw).read().unwrap();
+        let actual = sections.keys().map(String::as_str).collect::<Vec<_>>();
+        assert_eq!(case.expected, actual.as_slice());
     }
 
     const VALUE_ERROR_INVALID_SCALAR: ValueErrorTestCase = ValueErrorTestCase {

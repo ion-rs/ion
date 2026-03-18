@@ -1,11 +1,16 @@
 use crate::parser::ParserError;
 use std::{error, fmt};
 
+/// Errors returned by high-level Ion parsing and access APIs.
 #[derive(Clone, Debug)]
 pub enum IonError {
+    /// A requested section does not exist.
     MissingSection(String),
+    /// A requested dictionary field does not exist.
     MissingValue(String),
+    /// A generic parse failure without structured parser errors.
     ParseError,
+    /// One or more structured parser errors collected while reading the document.
     ParserErrors(Vec<ParserError>),
 }
 

@@ -3,23 +3,23 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/rust-lang/docs.rs/master/LICENSE)
 [![ion-fmt CI](https://github.com/ion-rs/ion/actions/workflows/ion-fmt.yml/badge.svg?branch=master)](https://github.com/ion-rs/ion/actions/workflows/ion-fmt.yml)
 
-[crates-badge]: https://img.shields.io/crates/v/ion.svg
+[crates-badge]: https://img.shields.io/crates/v/ion-fmt.svg
 [crates-link]: https://crates.io/crates/ion-fmt
 
 `ion-fmt` formats Ion documents from Rust code and from the terminal.
 
 ## Feature Flags
 
-- `default`: uses `BTreeMap` in `ion` and prints dictionary keys in sorted order.
-- `dictionary-indexmap`: uses `IndexMap` in `ion` and preserves insertion order.
+- `default`: uses `BTreeMap` in `ion` and prints section names and dictionary keys in sorted order.
+- `dictionary-indexmap`: uses `IndexMap` in `ion` and preserves section and dictionary insertion order.
 
 Default examples in this file are validated by `trycmd`.
 For `dictionary-indexmap` snapshots, see `README.indexmap.md`.
 
 ## Install
 
-- Default backend (`BTreeMap`, sorted dictionary keys): `cargo install ion-fmt`
-- `dictionary-indexmap` backend (insertion-order dictionary keys): `cargo install ion-fmt --features dictionary-indexmap`
+- Default backend (`BTreeMap`, sorted section names and dictionary keys): `cargo install ion-fmt`
+- `dictionary-indexmap` backend (insertion-order sections and dictionaries): `cargo install ion-fmt --features dictionary-indexmap`
 - From a local checkout (default backend): `cargo install --path ion-fmt`
 - From a local checkout (`dictionary-indexmap`): `cargo install --path ion-fmt --features dictionary-indexmap`
 
@@ -44,7 +44,7 @@ let formatted = format_str(raw).unwrap();
 $ ion-fmt --help
 Formats Ion files.
 
-Build mode: default dictionary backend (BTreeMap, dictionary keys are sorted).
+Build mode: default dictionary backend (BTreeMap, section names and dictionary keys are sorted).
 
 Usage: ion-fmt [COMMAND]
 
@@ -65,10 +65,10 @@ Options:
 
 ```console
 $ ion-fmt --version
-ion-fmt 0.11.1
+ion-fmt 0.12.0
 
 $ ion-fmt -V
-ion-fmt 0.11.1
+ion-fmt 0.12.0
 
 ```
 

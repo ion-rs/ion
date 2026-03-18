@@ -5,6 +5,17 @@ Repository and workspace maintenance changes are intentionally omitted.
 
 ## Unreleased
 
+## 0.12.0
+
+### Changed
+
+- Switch `ion-fmt` to `ion 0.12.0`
+- With `dictionary-indexmap` enabled, formatted document output now preserves top-level section insertion order through the underlying `ion` backend
+
+### Breaking changes
+
+- `dictionary-indexmap` builds no longer sort top-level sections before formatting; output section order now follows input insertion order
+
 ## 0.11.1
 
 ### Fixed

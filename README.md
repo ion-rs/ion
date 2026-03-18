@@ -16,23 +16,23 @@
 
 - Parse mixed documents containing section dictionaries and table rows.
 - Work with typed values (`String`, `i64`, `f64`, `bool`, arrays, dictionaries).
-- Keep stable output formatting and control dictionary ordering backend.
+- Keep stable output formatting and control section and dictionary ordering backend.
 - Filter parsing by section when you only need part of a large file.
 
 ## Installation
 
-Default dictionary backend (`BTreeMap`):
+Default ordered backend (`BTreeMap` for sections and dictionaries):
 
 ```toml
 [dependencies]
-ion = "0.11.0"
+ion = "0.12.0"
 ```
 
-Insertion-ordered dictionaries with `IndexMap`:
+Insertion-ordered backend (`IndexMap` for sections and dictionaries):
 
 ```toml
 [dependencies]
-ion = { version = "0.11.0", features = ["dictionary-indexmap"] }
+ion = { version = "0.12.0", features = ["dictionary-indexmap"] }
 ```
 
 ## Related Crates
@@ -88,22 +88,21 @@ assert!(ion.get("KEPT").is_some());
 
 ## Backend Choice
 
-`Dictionary` uses:
+`Dictionary` and `Sections` use:
 
 - `BTreeMap` by default
 - `IndexMap` with `dictionary-indexmap` feature flag
 
 This affects ordering in:
 
+- top-level section iteration and serialization
 - `Value::Dictionary`
 - section field serialization
 - `Ion::to_string()`
 
-Section names are still stored separately and remain ordered independently from the dictionary backend.
-
 ## Benchmark Results
 
-The parser uses `BTreeMap` for `Dictionary` by default. You can switch to `IndexMap` with:
+The default build uses `BTreeMap` for sections and dictionaries. You can switch to `IndexMap` with:
 
 ```bash
 cargo bench --bench parse --features dictionary-indexmap
@@ -114,22 +113,22 @@ The table below compares Criterion's middle estimate from:
 - `cargo bench --bench parse`
 - `cargo bench --bench parse --features dictionary-indexmap`
 
-These measurements are directional, not universal. Actual results depend on the document shape, dictionary density, machine, and compiler version.
+These measurements are directional, not universal. Actual results depend on section count, dictionary density, machine, and compiler version.
 
 |                  Benchmark                   |  `btree`  | `indexmap` |       Delta       |
 |----------------------------------------------|-----------|------------|-------------------|
-| `section_on_start_of_ion`                    | 1.5342 ms | 1.5925 ms  | `indexmap` +3.8%  |
-| `section_on_end_of_ion`                      | 1.5427 ms | 1.5957 ms  | `indexmap` +3.4%  |
-| `section_on_start_of_ion_tuned_parser`       | 1.4685 ms | 1.5044 ms  | `indexmap` +2.4%  |
-| `section_on_start_of_ion_parser_no_prealloc` | 1.6767 ms | 1.7540 ms  | `indexmap` +4.6%  |
-| `section_on_end_of_ion_tuned_parser`         | 1.4645 ms | 1.5166 ms  | `indexmap` +3.6%  |
-| `section_on_end_of_ion_parser_no_prealloc`   | 1.6815 ms | 1.7576 ms  | `indexmap` +4.5%  |
-| `parse_filtered/section_on_start_of_ion`     | 7.6819 us | 7.8456 us  | `indexmap` +2.1%  |
-| `parse_filtered/section_on_end_of_ion`       | 486.19 us | 433.22 us  | `indexmap` -10.9% |
-| `dictionary/to_string_hotel`                 | 1.6572 ms | 1.6462 ms  | `indexmap` -0.7%  |
-| `dictionary/read_hotel`                      | 1.5732 ms | 1.6453 ms  | `indexmap` +4.6%  |
+| `section_on_start_of_ion`                    | 2.1929 ms | 2.2167 ms  | `indexmap` +1.1%  |
+| `section_on_end_of_ion`                      | 2.2095 ms | 2.2255 ms  | `indexmap` +0.7%  |
+| `section_on_start_of_ion_tuned_parser`       | 2.1348 ms | 2.1275 ms  | `indexmap` -0.3%  |
+| `section_on_start_of_ion_parser_no_prealloc` | 2.3320 ms | 2.3902 ms  | `indexmap` +2.5%  |
+| `section_on_end_of_ion_tuned_parser`         | 2.1174 ms | 2.1431 ms  | `indexmap` +1.2%  |
+| `section_on_end_of_ion_parser_no_prealloc`   | 2.3451 ms | 2.4840 ms  | `indexmap` +5.9%  |
+| `parse_filtered/section_on_start_of_ion`     | 8.9580 us | 9.5898 us  | `indexmap` +7.1%  |
+| `parse_filtered/section_on_end_of_ion`       | 475.05 us | 458.83 us  | `indexmap` -3.4%  |
+| `backend/to_string_hotel`                    | 1.7484 ms | 1.6893 ms  | `indexmap` -3.4%  |
+| `backend/read_hotel`                         | 2.3249 ms | 2.2878 ms  | `indexmap` -1.6%  |
 
-In these sequential runs, `BTreeMap` was still faster in most parser paths, while `IndexMap` was faster when filtered parsing found the accepted section near the end of the input and slightly faster for `to_string()` on the hotel sample.
+In these sequential runs, `BTreeMap` stayed faster in most parser paths, while `IndexMap` was faster for filtered parsing when the accepted section appeared near the end of the input and for the backend-wide `to_string()`/`read()` hotel checks.
 
 ## Example Usage
 

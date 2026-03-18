@@ -8,6 +8,9 @@ use ion::{Ion, Row, Section, Value};
 use std::fmt;
 
 /// Display adapter that renders an [`Ion`] document with canonical formatting.
+///
+/// This is useful when you already have a parsed [`Ion`] value and want a
+/// `Display` implementation instead of an owned `String`.
 #[derive(Clone, Debug)]
 pub struct IonDisplay<'a> {
     ion: &'a Ion,
@@ -64,12 +67,17 @@ impl<'a> SectionDisplay<'a> {
 }
 
 /// Returns a display adapter that can be rendered with `to_string()`.
+///
+/// This avoids allocating the final string until the formatter output is
+/// actually rendered.
 #[must_use]
 pub fn display(ion: &Ion) -> IonDisplay<'_> {
     IonDisplay::new(ion)
 }
 
 /// Formats an Ion document into its canonical string representation.
+///
+/// This is equivalent to `display(ion).to_string()`.
 #[must_use]
 pub fn format_ion(ion: &Ion) -> String {
     display(ion).to_string()

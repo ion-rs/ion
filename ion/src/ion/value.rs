@@ -1,32 +1,43 @@
 use crate::{Dictionary, FromIon, IonError, Row};
 use std::str::FromStr;
 
+/// A typed Ion value.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
+    /// Quoted or unquoted string data.
     String(Box<str>),
+    /// Signed integer value.
     Integer(i64),
+    /// Floating-point value.
     Float(f64),
+    /// Boolean value.
     Boolean(bool),
+    /// Array of nested values.
     Array(Row),
+    /// Nested dictionary value.
     Dictionary(Dictionary),
 }
 
 impl Value {
+    /// Creates a string value.
     #[must_use]
     pub fn new_string(value: &str) -> Self {
         Value::String(value.into())
     }
 
+    /// Creates a one-element array containing a string value.
     #[must_use]
     pub fn new_string_array(value: &str) -> Self {
         Self::new_array(Self::new_string(value))
     }
 
+    /// Creates a one-element array containing `value`.
     #[must_use]
     pub fn new_array(value: Value) -> Self {
         Value::Array(vec![value])
     }
 
+    /// Returns the human-readable variant name.
     #[must_use]
     pub fn type_str(&self) -> &'static str {
         match self {
@@ -39,6 +50,7 @@ impl Value {
         }
     }
 
+    /// Returns the inner string slice when this is [`Value::String`].
     #[must_use]
     pub fn as_string(&self) -> Option<&str> {
         match self {
@@ -47,16 +59,19 @@ impl Value {
         }
     }
 
+    /// Returns `true` when this is [`Value::String`].
     #[must_use]
     pub fn is_string(&self) -> bool {
         matches!(self, Value::String(_))
     }
 
+    /// Alias for [`as_string`](Self::as_string).
     #[must_use]
     pub fn as_str(&self) -> Option<&str> {
         self.as_string()
     }
 
+    /// Returns the integer value when this is [`Value::Integer`].
     #[must_use]
     pub fn as_integer(&self) -> Option<i64> {
         match self {
@@ -65,6 +80,7 @@ impl Value {
         }
     }
 
+    /// Returns the float value when this is [`Value::Float`].
     #[must_use]
     pub fn as_float(&self) -> Option<f64> {
         match self {
@@ -73,6 +89,7 @@ impl Value {
         }
     }
 
+    /// Returns the boolean value when this is [`Value::Boolean`].
     #[must_use]
     pub fn as_boolean(&self) -> Option<bool> {
         match self {
@@ -81,6 +98,7 @@ impl Value {
         }
     }
 
+    /// Returns the array contents when this is [`Value::Array`].
     #[must_use]
     pub fn as_array(&self) -> Option<&Vec<Value>> {
         match self {
@@ -89,6 +107,7 @@ impl Value {
         }
     }
 
+    /// Returns the dictionary contents when this is [`Value::Dictionary`].
     #[must_use]
     pub fn as_dictionary(&self) -> Option<&Dictionary> {
         match self {
@@ -97,6 +116,9 @@ impl Value {
         }
     }
 
+    /// Returns a nested dictionary field by name.
+    ///
+    /// Returns `None` when this is not [`Value::Dictionary`] or the key is missing.
     #[must_use]
     pub fn get(&self, name: &str) -> Option<&Value> {
         match self {

@@ -1,9 +1,26 @@
 //! Ion document formatter as a reusable Rust library.
 //!
-//! This crate parses Ion input with [`ion`] and renders it back with stable
+//! `ion-fmt` parses Ion input with [`ion`] and renders it back with stable
 //! spacing and aligned table columns.
 //!
+//! # Feature flags
+//!
+//! - default: uses `BTreeMap` through [`ion`], so section names and dictionary
+//!   keys are formatted in sorted order
+//! - `dictionary-indexmap`: uses `IndexMap` through [`ion`], so section names
+//!   and dictionary keys preserve insertion order
+//!
+//! # Main entry points
+//!
+//! - [`format_str`] formats a raw Ion string
+//! - [`check_str`] checks whether a raw Ion string is already formatted
+//! - [`format_file`] formats a file without rewriting it
+//! - [`write_formatted_file`] rewrites a file in place when formatting changes it
+//! - [`display`] and [`format_ion`] operate on a pre-parsed [`ion::Ion`] value
+//!
 //! # Examples
+//!
+//! Formatting a string:
 //!
 //! ```rust
 //! use ion_fmt::format_str;
@@ -13,12 +30,25 @@
 //! assert_eq!("[A]\n\n[B]\n\n", formatted);
 //! ```
 //!
+//! Checking formatting:
+//!
 //! ```rust
 //! use ion_fmt::check_str;
 //!
 //! assert!(!check_str("[A]\n[B]\n").unwrap());
 //! assert!(check_str("[A]\n\n[B]\n\n").unwrap());
 //! ```
+//!
+//! Formatting a parsed document:
+//!
+//! ```rust
+//! use ion::Ion;
+//! use ion_fmt::format_ion;
+//!
+//! let ion: Ion = "[A]\n[B]\n".parse().unwrap();
+//! assert_eq!("[A]\n\n[B]\n\n", format_ion(&ion));
+//! ```
+#![warn(missing_docs)]
 
 mod columns_width;
 mod display;
@@ -34,6 +64,9 @@ use std::fs;
 use std::path::Path;
 
 /// Result returned by [`format_file`].
+///
+/// This lets callers inspect the formatted bytes before deciding whether to
+/// write them back to disk.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FormatResult {
     /// Formatted file content.
@@ -45,6 +78,11 @@ pub struct FormatResult {
 /// Formats an Ion string into canonical `ion-fmt` output.
 ///
 /// This keeps section ordering from parsed [`Ion`] and aligns table columns.
+///
+/// Section and dictionary ordering follow the active `ion` backend:
+///
+/// - default: sorted order
+/// - `dictionary-indexmap`: insertion order
 ///
 /// # Errors
 ///

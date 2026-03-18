@@ -1,10 +1,12 @@
 use crate::Row;
 use crate::ion::Value;
 
+/// Converts a row of [`Value`] cells into a typed Rust value.
 pub trait FromRow
 where
     Self: Sized,
 {
+    /// Conversion error type.
     type Err;
 
     /// # Errors
@@ -15,10 +17,12 @@ where
         I: Iterator<Item = &'a Value>;
 }
 
+/// Extension trait for parsing a [`Row`] into a typed value.
 pub trait ParseRow
 where
     Self: Sized,
 {
+    /// Parse error type.
     type Err;
 
     /// # Errors

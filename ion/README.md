@@ -14,23 +14,23 @@
 
 - Parse mixed documents containing section dictionaries and table rows.
 - Work with typed values (`String`, `i64`, `f64`, `bool`, arrays, dictionaries).
-- Keep stable output formatting and choose dictionary ordering backend.
+- Keep stable output formatting and choose section and dictionary ordering backend.
 - Filter parsing by section when you only need part of a large file.
 
 ## Installation
 
-Default dictionary backend (`BTreeMap`):
+Default ordered backend (`BTreeMap` for sections and dictionaries):
 
 ```toml
 [dependencies]
-ion = "0.11.0"
+ion = "0.12.0"
 ```
 
-Insertion-ordered dictionaries with `IndexMap`:
+Insertion-ordered backend (`IndexMap` for sections and dictionaries):
 
 ```toml
 [dependencies]
-ion = { version = "0.11.0", features = ["dictionary-indexmap"] }
+ion = { version = "0.12.0", features = ["dictionary-indexmap"] }
 ```
 
 ## Rust Quick Start
@@ -81,12 +81,17 @@ assert!(ion.get("KEPT").is_some());
 
 ## Backend Choice
 
-`Dictionary` uses:
+`Dictionary` and `Sections` use:
 
 - `BTreeMap` by default.
 - `IndexMap` with `dictionary-indexmap`.
 
-This affects ordering in `Value::Dictionary`, section field serialization, and `Ion::to_string()`.
+This affects ordering in:
+
+- top-level section iteration and serialization
+- `Value::Dictionary`
+- section field serialization
+- `Ion::to_string()`
 
 ## Example Usage
 
