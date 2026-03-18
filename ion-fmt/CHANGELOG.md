@@ -5,6 +5,12 @@ Repository and workspace maintenance changes are intentionally omitted.
 
 ## Unreleased
 
+## 0.11.1
+
+### Fixed
+
+- Make `ion-fmt` fail fast with a clear error when run without file paths and without piped stdin
+
 ## 0.11.0
 
 ### Changed
