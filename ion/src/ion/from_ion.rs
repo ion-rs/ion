@@ -2,10 +2,15 @@ use crate::ion::Value;
 use std::num::ParseIntError;
 use std::str::ParseBoolError;
 
+/// Converts Ion values or sections into typed Rust values.
+///
+/// This trait powers helpers such as [`Value::from_ion`](crate::Value::from_ion) and
+/// [`Section::parse`](crate::Section::parse).
 pub trait FromIon<T>
 where
     Self: Sized,
 {
+    /// Conversion error type.
     type Err;
 
     /// # Errors

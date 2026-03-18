@@ -13,12 +13,20 @@ pub use self::value::*;
 use crate::{Parser, Sections};
 use std::str;
 
+/// Parsed Ion document.
+///
+/// The document is a map of section names to [`Section`] values. The concrete backing
+/// map is [`Sections`], so iteration order follows the selected backend:
+///
+/// - default: sorted by section name
+/// - `dictionary-indexmap`: insertion order
 #[derive(Clone, Debug)]
 pub struct Ion {
     sections: Sections,
 }
 
 impl Ion {
+    /// Builds a document from an existing section map.
     #[must_use]
     pub fn new(sections: Sections) -> Ion {
         Ion { sections }
@@ -31,6 +39,7 @@ impl Ion {
         parser_to_ion(Parser::new_filtered(s, accepted_sections))
     }
 
+    /// Returns the section with the provided name.
     #[must_use]
     pub fn get(&self, key: &str) -> Option<&Section> {
         self.sections.get(key)
@@ -70,6 +79,9 @@ impl Ion {
             .ok_or_else(|| IonError::MissingSection(key.to_owned()))
     }
 
+    /// Removes and returns a section.
+    ///
+    /// In `dictionary-indexmap` builds this preserves the order of the remaining sections.
     pub fn remove(&mut self, key: &str) -> Option<Section> {
         #[cfg(feature = "dictionary-indexmap")]
         {
@@ -82,6 +94,7 @@ impl Ion {
         }
     }
 
+    /// Iterates over section name / section pairs.
     pub fn iter(&self) -> impl Iterator<Item = (&String, &Section)> {
         self.sections.iter()
     }
@@ -102,11 +115,21 @@ fn parser_to_ion(mut parser: Parser) -> Result<Ion, IonError> {
     }
 }
 
+/// Parses a string literal into [`Ion`].
+///
+/// # Panics
+///
+/// Panics when parsing fails.
 #[macro_export]
 macro_rules! ion {
     ($raw:expr) => {{ $raw.parse::<Ion>().expect("Failed parsing to 'Ion'") }};
 }
 
+/// Parses a string literal into [`Ion`] while keeping only selected sections.
+///
+/// # Panics
+///
+/// Panics when parsing fails.
 #[macro_export]
 macro_rules! ion_filtered {
     ($raw:expr, $accepted_sections:expr) => {
