@@ -29,10 +29,10 @@ Options:
 
 ```console
 $ ion-fmt --version
-ion-fmt 0.11.0
+ion-fmt 0.11.1
 
 $ ion-fmt -V
-ion-fmt 0.11.0
+ion-fmt 0.11.1
 
 ```
 
@@ -89,5 +89,13 @@ priority = 10
 | 20260103 | UK     | APP  | 145.25 |     2 |
 ```
 
+Interactive shell example when no file paths and no piped stdin are provided:
+
+```text
+$ ion-fmt
+No input provided for `stdout`. Pass one or more file paths or pipe Ion through stdin.
+```
+
 The CLI arguments are implemented with `clap` derive and subcommands.
-When no subcommand is provided, `ion-fmt` defaults to the `stdout` command (stdin -> stdout).
+When no subcommand is provided, `ion-fmt` defaults to the `stdout` command.
+If stdin is interactive and no paths are passed, it exits with an error instead of waiting for input.
