@@ -10,7 +10,7 @@ Formats Ion files.
 
 Build mode: dictionary-indexmap (section names and dictionary keys preserve insertion order).
 
-Usage: ion-fmt [COMMAND]
+Usage: ion-fmt [OPTIONS] [COMMAND]
 
 Commands:
   format  Format files in place or stdin
@@ -19,6 +19,11 @@ Commands:
   help    Print this message or the help of the given subcommand(s)
 
 Options:
+      --style <KEY=VALUE>
+          Style options in `key=value` form (repeatable).
+          
+          Supported: - `dictionary-field=multiline` (default) - `dictionary-field=singleline`
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -29,10 +34,10 @@ Options:
 
 ```console
 $ ion-fmt --version
-ion-fmt 0.12.0
+ion-fmt 0.13.0
 
 $ ion-fmt -V
-ion-fmt 0.12.0
+ion-fmt 0.13.0
 
 ```
 

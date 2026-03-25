@@ -28,15 +28,26 @@ For `dictionary-indexmap` snapshots, see `README.indexmap.md`.
 ## Library
 
 ```rust
-use ion_fmt::format_str;
+use ion_fmt::{FormatOptions, format_str_with_options};
 
 let raw = r#"
     [A]
     [B]
 "#;
 
-let formatted = format_str(raw).unwrap();
+let formatted = format_str_with_options(raw, FormatOptions::default()).unwrap();
 ```
+
+Options-first API:
+
+- `format_str_with_options`
+- `check_str_with_options`
+- `format_file_with_options`
+- `write_formatted_file_with_options`
+- `display_with_options`
+- `format_ion_with_options`
+- `DictionaryDisplay`
+- `DictionaryFieldDisplay`
 
 ## CLI
 
@@ -46,7 +57,7 @@ Formats Ion files.
 
 Build mode: default dictionary backend (BTreeMap, section names and dictionary keys are sorted).
 
-Usage: ion-fmt [COMMAND]
+Usage: ion-fmt [OPTIONS] [COMMAND]
 
 Commands:
   format  Format files in place or stdin
@@ -55,6 +66,11 @@ Commands:
   help    Print this message or the help of the given subcommand(s)
 
 Options:
+      --style <KEY=VALUE>
+          Style options in `key=value` form (repeatable).
+          
+          Supported: - `dictionary-field=multiline` (default) - `dictionary-field=singleline`
+
   -h, --help
           Print help (see a summary with '-h')
 
@@ -65,10 +81,10 @@ Options:
 
 ```console
 $ ion-fmt --version
-ion-fmt 0.12.0
+ion-fmt 0.13.0
 
 $ ion-fmt -V
-ion-fmt 0.12.0
+ion-fmt 0.13.0
 
 ```
 

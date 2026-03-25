@@ -4,8 +4,47 @@
 //! values and delegates parsing and validation to the `ion` crate.
 
 use crate::columns_width::{Column, ColumnsWidth};
-use ion::{Ion, Row, Section, Value};
-use std::fmt;
+use ion::{Dictionary, Ion, Row, Section, Value};
+use std::fmt::{self, Write};
+use std::str::FromStr;
+
+/// Formatting options used when rendering Ion documents.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct FormatOptions {
+    /// Dictionary rendering options.
+    pub dictionary: DictionaryOptions,
+}
+
+/// Options that control dictionary formatting behavior.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct DictionaryOptions {
+    /// Style used for dictionary fields.
+    pub field: FieldStyle,
+}
+
+/// Formatting style for dictionary string fields.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum FieldStyle {
+    /// Render dictionary strings as escaped single-line values.
+    Singleline,
+    /// Preserve embedded newline characters as multiline quoted values.
+    #[default]
+    Multiline,
+}
+
+impl FromStr for FieldStyle {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "singleline" => Ok(Self::Singleline),
+            "multiline" => Ok(Self::Multiline),
+            _ => Err(format!(
+                "Unsupported `dictionary-field` style `{value}`. Expected `singleline` or `multiline`."
+            )),
+        }
+    }
+}
 
 /// Display adapter that renders an [`Ion`] document with canonical formatting.
 ///
@@ -14,13 +53,48 @@ use std::fmt;
 #[derive(Clone, Debug)]
 pub struct IonDisplay<'a> {
     ion: &'a Ion,
+    options: FormatOptions,
 }
 
 impl<'a> IonDisplay<'a> {
-    /// Creates a display adapter for an Ion document.
+    /// Creates a display adapter with explicit formatting options.
     #[must_use]
-    pub fn new(ion: &'a Ion) -> Self {
-        Self { ion }
+    pub fn new(ion: &'a Ion, options: FormatOptions) -> Self {
+        Self { ion, options }
+    }
+}
+
+/// Display adapter that renders dictionary fields from a section.
+///
+/// This is useful when callers want to format only dictionary values instead
+/// of a full section or full document.
+#[derive(Clone, Debug)]
+pub struct DictionaryDisplay<'a> {
+    dictionary: &'a Dictionary,
+    field: FieldStyle,
+}
+
+impl<'a> DictionaryDisplay<'a> {
+    /// Creates a dictionary display adapter with explicit dictionary field style.
+    #[must_use]
+    pub fn new(dictionary: &'a Dictionary, field: FieldStyle) -> Self {
+        Self { dictionary, field }
+    }
+}
+
+/// Display adapter that renders a single dictionary key-value pair.
+#[derive(Clone, Debug)]
+pub struct DictionaryFieldDisplay<'a> {
+    key: &'a str,
+    value: &'a Value,
+    field: FieldStyle,
+}
+
+impl<'a> DictionaryFieldDisplay<'a> {
+    /// Creates a dictionary field display adapter with explicit dictionary field style.
+    #[must_use]
+    pub fn new(key: &'a str, value: &'a Value, field: FieldStyle) -> Self {
+        Self { key, value, field }
     }
 }
 
@@ -29,6 +103,7 @@ struct SectionDisplay<'a> {
     columns_width: ColumnsWidth,
     name: &'a str,
     section: &'a Section,
+    options: FormatOptions,
 }
 
 #[derive(Clone, Debug)]
@@ -52,7 +127,7 @@ pub(crate) enum RowTypeDisplay {
 }
 
 impl<'a> SectionDisplay<'a> {
-    fn new(name: &'a str, section: &'a Section) -> Self {
+    fn new(name: &'a str, section: &'a Section, options: FormatOptions) -> Self {
         let columns_width = section
             .rows
             .iter()
@@ -62,32 +137,28 @@ impl<'a> SectionDisplay<'a> {
             columns_width,
             name,
             section,
+            options,
         }
     }
 }
 
-/// Returns a display adapter that can be rendered with `to_string()`.
-///
-/// This avoids allocating the final string until the formatter output is
-/// actually rendered.
+/// Returns a display adapter rendered with explicit formatting options.
 #[must_use]
-pub fn display(ion: &Ion) -> IonDisplay<'_> {
-    IonDisplay::new(ion)
+pub fn display_with_options(ion: &Ion, options: FormatOptions) -> IonDisplay<'_> {
+    IonDisplay::new(ion, options)
 }
 
-/// Formats an Ion document into its canonical string representation.
-///
-/// This is equivalent to `display(ion).to_string()`.
+/// Formats an Ion document using explicit formatting options.
 #[must_use]
-pub fn format_ion(ion: &Ion) -> String {
-    display(ion).to_string()
+pub fn format_ion_with_options(ion: &Ion, options: FormatOptions) -> String {
+    display_with_options(ion, options).to_string()
 }
 
 impl fmt::Display for IonDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.ion
             .iter()
-            .map(|(name, section)| SectionDisplay::new(name, section))
+            .map(|(name, section)| SectionDisplay::new(name, section, self.options))
             .try_for_each(|section| writeln!(f, "{section}"))
     }
 }
@@ -95,7 +166,7 @@ impl fmt::Display for IonDisplay<'_> {
 impl fmt::Display for SectionDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "[{}]", self.name)?;
-        dictionary(f, self.section.dictionary.iter())?;
+        DictionaryDisplay::new(&self.section.dictionary, self.options.dictionary.field).fmt(f)?;
 
         if self.section.rows.is_empty() {
             return Ok(());
@@ -106,6 +177,26 @@ impl fmt::Display for SectionDisplay<'_> {
             rows: &self.section.rows,
         }
         .fmt(f)
+    }
+}
+
+impl fmt::Display for DictionaryDisplay<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.dictionary
+            .iter()
+            .try_for_each(|(key, value)| DictionaryFieldDisplay::new(key, value, self.field).fmt(f))
+    }
+}
+
+impl fmt::Display for DictionaryFieldDisplay<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.value {
+            Value::String(text) if self.field == FieldStyle::Multiline && text.contains('\n') => {
+                write_dictionary_multiline_string(f, self.key, text)
+            }
+            Value::String(_) => writeln!(f, "{} = \"{}\"", self.key, self.value),
+            _ => writeln!(f, "{} = {}", self.key, self.value),
+        }
     }
 }
 
@@ -152,17 +243,20 @@ impl fmt::Display for RowDisplay<'_> {
     }
 }
 
-fn dictionary<'a>(
+fn write_dictionary_multiline_string(
     f: &mut fmt::Formatter<'_>,
-    mut fields: impl Iterator<Item = (&'a String, &'a Value)>,
+    key: &str,
+    text: &str,
 ) -> fmt::Result {
-    fields.try_for_each(|(key, value)| {
-        if value.is_string() {
-            writeln!(f, "{key} = \"{value}\"")
-        } else {
-            writeln!(f, "{key} = {value}")
+    write!(f, "{key} = \"")?;
+    for ch in text.chars() {
+        match ch {
+            '\\' => f.write_str("\\\\")?,
+            '"' => f.write_str("\\\"")?,
+            _ => f.write_char(ch)?,
         }
-    })
+    }
+    writeln!(f, "\"")
 }
 
 fn header(f: &mut fmt::Formatter<'_>, columns: &RowDisplay<'_>) -> fmt::Result {
@@ -298,6 +392,7 @@ mod tests {
     use super::*;
     use crate::columns_width::{Column, ColumnType};
     use indoc::indoc;
+    use ion::Dictionary;
     use pretty_assertions::assert_eq;
     use std::sync::LazyLock;
     use test_case::test_case;
@@ -305,6 +400,7 @@ mod tests {
     #[derive(Debug)]
     struct IonFormatTestCase {
         raw: &'static str,
+        options: FormatOptions,
         expected: &'static str,
     }
 
@@ -312,6 +408,28 @@ mod tests {
     struct DataOrSeparatorTestCase {
         row: Row,
         expected: RowTypeDisplay,
+    }
+
+    #[derive(Debug)]
+    struct DictionaryDisplayTestCase {
+        dictionary: Dictionary,
+        field: FieldStyle,
+        expected: &'static str,
+    }
+
+    #[derive(Debug)]
+    struct DictionaryFieldDisplayTestCase {
+        key: &'static str,
+        value: Value,
+        field: FieldStyle,
+        expected: &'static str,
+    }
+
+    #[derive(Debug)]
+    struct WriteDictionaryMultilineStringTestCase {
+        key: &'static str,
+        text: &'static str,
+        expected: &'static str,
     }
 
     #[derive(Debug)]
@@ -326,6 +444,14 @@ mod tests {
         Value::String(value.into())
     }
 
+    fn dictionary(entries: impl IntoIterator<Item = (&'static str, Value)>) -> Dictionary {
+        let mut dictionary = Dictionary::new();
+        for (key, value) in entries {
+            dictionary.insert(key.to_owned(), value);
+        }
+        dictionary
+    }
+
     static ION_FORMAT_CASE: LazyLock<IonFormatTestCase> = LazyLock::new(|| IonFormatTestCase {
         raw: indoc! {r#"
             [ALPHA]
@@ -337,6 +463,11 @@ mod tests {
             | 1   | A    |
             | 22  | B    |
         "#},
+        options: FormatOptions {
+            dictionary: DictionaryOptions {
+                field: FieldStyle::Singleline,
+            },
+        },
         expected: indoc! {r#"
             [ALPHA]
             name = "foo"
@@ -355,19 +486,278 @@ mod tests {
                 [ALPHA]
                 value = 7
             "},
+            options: FormatOptions {
+                dictionary: DictionaryOptions {
+                    field: FieldStyle::Singleline,
+                },
+            },
             expected: indoc! {r"
                 [ALPHA]
                 value = 7
 
             "},
         });
+    static ION_FORMAT_MULTILINE_DICTIONARY_STRING_CASE: LazyLock<IonFormatTestCase> = LazyLock::new(
+        || IonFormatTestCase {
+            raw: indoc! {r#"
+                [Data]
+                select = "
+                    SELECT column
+                    FROM table t1
+                    INNER JOIN t2
+                        ON t1.id = t2.
+                    WHERE t1.userid = {{ user_id }}
+                    ORDER BY name ASC
+                "
+
+                [Table]
+                |   col1   |
+                |--------|
+                | name1 |
+                | name2 |
+            "#},
+            options: FormatOptions {
+                dictionary: DictionaryOptions {
+                    field: FieldStyle::Singleline,
+                },
+            },
+            expected: indoc! {r#"
+                [Data]
+                select = "\n    SELECT column\n    FROM table t1\n    INNER JOIN t2\n        ON t1.id = t2.\n    WHERE t1.userid = {{ user_id }}\n    ORDER BY name ASC\n"
+
+                [Table]
+                |  col1 |
+                |-------|
+                | name1 |
+                | name2 |
+
+            "#},
+        },
+    );
+    const ION_FORMAT_MULTILINE_DICTIONARY_STRING_WITH_MULTILINE_STYLE_CASE: IonFormatTestCase =
+        IonFormatTestCase {
+            raw: indoc! {r#"
+            [Data]
+            select = "
+                SELECT column
+                FROM table t1
+                INNER JOIN t2
+                    ON t1.id = t2.
+                WHERE t1.userid = {{ user_id }}
+                ORDER BY name ASC
+            "
+
+            [Table]
+            |   col1   |
+            |--------|
+            | name1 |
+            | name2 |
+        "#},
+            options: FormatOptions {
+                dictionary: DictionaryOptions {
+                    field: FieldStyle::Multiline,
+                },
+            },
+            expected: indoc! {r#"
+            [Data]
+            select = "
+                SELECT column
+                FROM table t1
+                INNER JOIN t2
+                    ON t1.id = t2.
+                WHERE t1.userid = {{ user_id }}
+                ORDER BY name ASC
+            "
+
+            [Table]
+            |  col1 |
+            |-------|
+            | name1 |
+            | name2 |
+
+        "#},
+        };
+    const ION_FORMAT_MULTILINE_DICTIONARY_STRING_WITH_SINGLELINE_STYLE_CASE: IonFormatTestCase =
+        IonFormatTestCase {
+            options: FormatOptions {
+                dictionary: DictionaryOptions {
+                    field: FieldStyle::Singleline,
+                },
+            },
+            expected: indoc! {r#"
+            [Data]
+            select = "\n    SELECT column\n    FROM table t1\n    INNER JOIN t2\n        ON t1.id = t2.\n    WHERE t1.userid = {{ user_id }}\n    ORDER BY name ASC\n"
+
+            [Table]
+            |  col1 |
+            |-------|
+            | name1 |
+            | name2 |
+
+        "#},
+            ..ION_FORMAT_MULTILINE_DICTIONARY_STRING_WITH_MULTILINE_STYLE_CASE
+        };
 
     #[test_case(&*ION_FORMAT_CASE; "formats ion document")]
     #[test_case(&*ION_FORMAT_NON_STRING_DICTIONARY_CASE; "formats non string dictionary value")]
+    #[test_case(
+        &*ION_FORMAT_MULTILINE_DICTIONARY_STRING_CASE;
+        "formats multiline dictionary string value"
+    )]
+    #[test_case(
+        &ION_FORMAT_MULTILINE_DICTIONARY_STRING_WITH_SINGLELINE_STYLE_CASE;
+        "formats multiline dictionary string with singleline style option"
+    )]
+    #[test_case(
+        &ION_FORMAT_MULTILINE_DICTIONARY_STRING_WITH_MULTILINE_STYLE_CASE;
+        "formats multiline dictionary string with multiline style option"
+    )]
     fn format_ion_document(case: &IonFormatTestCase) {
         let ion = case.raw.parse::<Ion>().unwrap();
-        assert_eq!(case.expected, format_ion(&ion));
-        assert_eq!(case.expected, display(&ion).to_string());
+        assert_eq!(case.expected, format_ion_with_options(&ion, case.options));
+        assert_eq!(
+            case.expected,
+            display_with_options(&ion, case.options).to_string()
+        );
+    }
+
+    static DICTIONARY_DISPLAY_SINGLELINE_CASE: LazyLock<DictionaryDisplayTestCase> =
+        LazyLock::new(|| DictionaryDisplayTestCase {
+            dictionary: dictionary([("a", string("foo")), ("query", string("\nSELECT 1\n"))]),
+            field: FieldStyle::Singleline,
+            expected: "a = \"foo\"\nquery = \"\\nSELECT 1\\n\"\n",
+        });
+    static DICTIONARY_DISPLAY_MULTILINE_CASE: LazyLock<DictionaryDisplayTestCase> =
+        LazyLock::new(|| DictionaryDisplayTestCase {
+            dictionary: dictionary([("a", string("foo")), ("query", string("\nSELECT 1\n"))]),
+            field: FieldStyle::Multiline,
+            expected: "a = \"foo\"\nquery = \"\nSELECT 1\n\"\n",
+        });
+
+    #[test_case(
+        &*DICTIONARY_DISPLAY_SINGLELINE_CASE;
+        "dictionary display with singleline style"
+    )]
+    #[test_case(
+        &*DICTIONARY_DISPLAY_MULTILINE_CASE;
+        "dictionary display with multiline style"
+    )]
+    fn display_dictionary(case: &DictionaryDisplayTestCase) {
+        assert_eq!(
+            case.expected,
+            DictionaryDisplay::new(&case.dictionary, case.field).to_string()
+        );
+    }
+
+    static DICTIONARY_FIELD_NON_STRING_CASE: LazyLock<DictionaryFieldDisplayTestCase> =
+        LazyLock::new(|| DictionaryFieldDisplayTestCase {
+            key: "count",
+            value: Value::Integer(7),
+            field: FieldStyle::Singleline,
+            expected: "count = 7\n",
+        });
+    static DICTIONARY_FIELD_MULTILINE_SINGLELINE_CASE: LazyLock<DictionaryFieldDisplayTestCase> =
+        LazyLock::new(|| DictionaryFieldDisplayTestCase {
+            key: "query",
+            value: string("\nSELECT 1\n"),
+            field: FieldStyle::Singleline,
+            expected: "query = \"\\nSELECT 1\\n\"\n",
+        });
+    static DICTIONARY_FIELD_MULTILINE_MULTILINE_CASE: LazyLock<DictionaryFieldDisplayTestCase> =
+        LazyLock::new(|| DictionaryFieldDisplayTestCase {
+            key: "query",
+            value: string("\nSELECT 1\n"),
+            field: FieldStyle::Multiline,
+            expected: "query = \"\nSELECT 1\n\"\n",
+        });
+
+    #[test_case(&*DICTIONARY_FIELD_NON_STRING_CASE; "dictionary field non string value")]
+    #[test_case(
+        &*DICTIONARY_FIELD_MULTILINE_SINGLELINE_CASE;
+        "dictionary field multiline value with singleline style"
+    )]
+    #[test_case(
+        &*DICTIONARY_FIELD_MULTILINE_MULTILINE_CASE;
+        "dictionary field multiline value with multiline style"
+    )]
+    fn display_dictionary_field(case: &DictionaryFieldDisplayTestCase) {
+        assert_eq!(
+            case.expected,
+            DictionaryFieldDisplay::new(case.key, &case.value, case.field).to_string()
+        );
+    }
+
+    fn render_dictionary_multiline_string(key: &str, text: &str) -> String {
+        struct DictionaryMultilineStringDisplay<'a> {
+            key: &'a str,
+            text: &'a str,
+        }
+
+        impl std::fmt::Display for DictionaryMultilineStringDisplay<'_> {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write_dictionary_multiline_string(f, self.key, self.text)
+            }
+        }
+
+        DictionaryMultilineStringDisplay { key, text }.to_string()
+    }
+
+    const WRITE_MULTILINE_DICTIONARY_STRING_EMPTY_CASE: WriteDictionaryMultilineStringTestCase =
+        WriteDictionaryMultilineStringTestCase {
+            key: "query",
+            text: "",
+            expected: "query = \"\"\n",
+        };
+    const WRITE_MULTILINE_DICTIONARY_STRING_MULTILINE_CASE: WriteDictionaryMultilineStringTestCase =
+        WriteDictionaryMultilineStringTestCase {
+            key: "query",
+            text: "\nSELECT 1\nFROM dual\n",
+            expected: "query = \"\nSELECT 1\nFROM dual\n\"\n",
+        };
+    const WRITE_MULTILINE_DICTIONARY_STRING_ESCAPES_QUOTE_CASE:
+        WriteDictionaryMultilineStringTestCase = WriteDictionaryMultilineStringTestCase {
+        key: "query",
+        text: "value \"quoted\"",
+        expected: "query = \"value \\\"quoted\\\"\"\n",
+    };
+    const WRITE_MULTILINE_DICTIONARY_STRING_ESCAPES_BACKSLASH_CASE:
+        WriteDictionaryMultilineStringTestCase = WriteDictionaryMultilineStringTestCase {
+        key: "query",
+        text: r"C:\work\ion",
+        expected: "query = \"C:\\\\work\\\\ion\"\n",
+    };
+    const WRITE_MULTILINE_DICTIONARY_STRING_ESCAPES_QUOTE_AND_BACKSLASH_CASE:
+        WriteDictionaryMultilineStringTestCase = WriteDictionaryMultilineStringTestCase {
+        key: "query",
+        text: "path=\"C:\\work\"\n-- done",
+        expected: "query = \"path=\\\"C:\\\\work\\\"\n-- done\"\n",
+    };
+
+    #[test_case(
+        &WRITE_MULTILINE_DICTIONARY_STRING_EMPTY_CASE;
+        "writes empty multiline dictionary string"
+    )]
+    #[test_case(
+        &WRITE_MULTILINE_DICTIONARY_STRING_MULTILINE_CASE;
+        "preserves multiline text and trailing newline"
+    )]
+    #[test_case(
+        &WRITE_MULTILINE_DICTIONARY_STRING_ESCAPES_QUOTE_CASE;
+        "escapes quotes in multiline dictionary string"
+    )]
+    #[test_case(
+        &WRITE_MULTILINE_DICTIONARY_STRING_ESCAPES_BACKSLASH_CASE;
+        "escapes backslashes in multiline dictionary string"
+    )]
+    #[test_case(
+        &WRITE_MULTILINE_DICTIONARY_STRING_ESCAPES_QUOTE_AND_BACKSLASH_CASE;
+        "escapes quotes and backslashes while preserving newlines"
+    )]
+    fn write_dictionary_multiline_string_cases(case: &WriteDictionaryMultilineStringTestCase) {
+        assert_eq!(
+            case.expected,
+            render_dictionary_multiline_string(case.key, case.text)
+        );
     }
 
     static SEPARATOR_ROW_CASE: LazyLock<DataOrSeparatorTestCase> =

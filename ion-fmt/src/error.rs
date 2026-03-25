@@ -3,8 +3,9 @@ use std::fmt;
 
 /// Error returned by file-based formatting operations.
 ///
-/// String-based helpers such as [`crate::format_str`] return `ion::IonError`
-/// directly. File-based helpers wrap both I/O and parse failures in this type.
+/// String-based helpers such as [`crate::format_str_with_options`] return
+/// `ion::IonError` directly. File-based helpers wrap both I/O and parse
+/// failures in this type.
 #[derive(Debug)]
 pub enum FormatError {
     /// Filesystem read/write error.
