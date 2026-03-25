@@ -5,6 +5,30 @@ Repository and workspace maintenance changes are intentionally omitted.
 
 ## Unreleased
 
+No changes yet.
+
+## 0.13.0
+
+### Added
+
+- Add `--style dictionary-field=singleline|multiline` CLI option
+- Add formatter options API (`FormatOptions`) with dictionary field style control
+- Add public `DictionaryDisplay` and `DictionaryFieldDisplay` adapters
+
+### Changed
+
+- Make multiline the default dictionary-field rendering behavior
+
+### Breaking changes
+
+- Remove wrapper APIs in favor of options-explicit variants:
+  `format_str` -> `format_str_with_options`,
+  `check_str` -> `check_str_with_options`,
+  `format_file` -> `format_file_with_options`,
+  `write_formatted_file` -> `write_formatted_file_with_options`,
+  `display` -> `display_with_options`,
+  `format_ion` -> `format_ion_with_options`
+
 ## 0.12.0
 
 ### Changed
