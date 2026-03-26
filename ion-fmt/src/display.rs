@@ -13,6 +13,10 @@ use std::str::FromStr;
 pub struct FormatOptions {
     /// Dictionary rendering options.
     pub dictionary: DictionaryOptions,
+    /// Section rendering options.
+    pub section: SectionOptions,
+    /// Document-level rendering options.
+    pub document: DocumentOptions,
 }
 
 /// Options that control dictionary formatting behavior.
@@ -20,6 +24,20 @@ pub struct FormatOptions {
 pub struct DictionaryOptions {
     /// Style used for dictionary fields.
     pub field: FieldStyle,
+}
+
+/// Options that control section-level formatting behavior.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct SectionOptions {
+    /// Spacing between dictionary fields and table rows in the same section.
+    pub spacing: SectionSpacing,
+}
+
+/// Options that control document-level formatting behavior.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct DocumentOptions {
+    /// Spacing at end-of-document.
+    pub spacing: DocumentSpacing,
 }
 
 /// Formatting style for dictionary string fields.
@@ -32,6 +50,26 @@ pub enum FieldStyle {
     Multiline,
 }
 
+/// Spacing behavior between dictionary fields and table rows in one section.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum SectionSpacing {
+    /// Keep the single line break between dictionary fields and table rows.
+    NewLine,
+    /// Add an extra empty line between dictionary fields and table rows.
+    #[default]
+    AdditionalNewLine,
+}
+
+/// Spacing behavior at end-of-document.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum DocumentSpacing {
+    /// Keep a single newline at end of document.
+    #[default]
+    EndNewLine,
+    /// Add one extra empty line at end of document.
+    AdditionalEndNewLine,
+}
+
 impl FromStr for FieldStyle {
     type Err = String;
 
@@ -41,6 +79,34 @@ impl FromStr for FieldStyle {
             "multiline" => Ok(Self::Multiline),
             _ => Err(format!(
                 "Unsupported `dictionary-field` style `{value}`. Expected `singleline` or `multiline`."
+            )),
+        }
+    }
+}
+
+impl FromStr for SectionSpacing {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "newline" => Ok(Self::NewLine),
+            "additional-newline" => Ok(Self::AdditionalNewLine),
+            _ => Err(format!(
+                "Unsupported `section-spacing` style `{value}`. Expected `newline` or `additional-newline`."
+            )),
+        }
+    }
+}
+
+impl FromStr for DocumentSpacing {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "end-newline" => Ok(Self::EndNewLine),
+            "additional-end-newline" => Ok(Self::AdditionalEndNewLine),
+            _ => Err(format!(
+                "Unsupported `document-spacing` style `{value}`. Expected `end-newline` or `additional-end-newline`."
             )),
         }
     }
@@ -159,7 +225,15 @@ impl fmt::Display for IonDisplay<'_> {
         self.ion
             .iter()
             .map(|(name, section)| SectionDisplay::new(name, section, self.options))
-            .try_for_each(|section| writeln!(f, "{section}"))
+            .try_for_each(|section| writeln!(f, "{section}"))?;
+
+        if self.ion.iter().next().is_some()
+            && self.options.document.spacing == DocumentSpacing::AdditionalEndNewLine
+        {
+            writeln!(f)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -170,6 +244,12 @@ impl fmt::Display for SectionDisplay<'_> {
 
         if self.section.rows.is_empty() {
             return Ok(());
+        }
+
+        if !self.section.dictionary.is_empty()
+            && self.options.section.spacing == SectionSpacing::AdditionalNewLine
+        {
+            writeln!(f)?;
         }
 
         RowsDisplay {
@@ -399,6 +479,7 @@ mod tests {
 
     #[derive(Debug)]
     struct IonFormatTestCase {
+        description: &'static str,
         raw: &'static str,
         options: FormatOptions,
         expected: &'static str,
@@ -452,7 +533,26 @@ mod tests {
         dictionary
     }
 
+    #[test]
+    fn section_spacing_default_is_additional_newline() {
+        assert_eq!(SectionSpacing::AdditionalNewLine, SectionSpacing::default());
+        assert_eq!(
+            SectionSpacing::AdditionalNewLine,
+            FormatOptions::default().section.spacing
+        );
+    }
+
+    #[test]
+    fn document_spacing_default_is_newline() {
+        assert_eq!(DocumentSpacing::EndNewLine, DocumentSpacing::default());
+        assert_eq!(
+            DocumentSpacing::EndNewLine,
+            FormatOptions::default().document.spacing
+        );
+    }
+
     static ION_FORMAT_CASE: LazyLock<IonFormatTestCase> = LazyLock::new(|| IonFormatTestCase {
+        description: "formats ion document",
         raw: indoc! {r#"
             [ALPHA]
             name = "foo"
@@ -466,6 +566,12 @@ mod tests {
         options: FormatOptions {
             dictionary: DictionaryOptions {
                 field: FieldStyle::Singleline,
+            },
+            section: SectionOptions {
+                spacing: SectionSpacing::AdditionalNewLine,
+            },
+            document: DocumentOptions {
+                spacing: DocumentSpacing::EndNewLine,
             },
         },
         expected: indoc! {r#"
@@ -482,6 +588,7 @@ mod tests {
     });
     static ION_FORMAT_NON_STRING_DICTIONARY_CASE: LazyLock<IonFormatTestCase> =
         LazyLock::new(|| IonFormatTestCase {
+            description: "formats non string dictionary value",
             raw: indoc! {r"
                 [ALPHA]
                 value = 7
@@ -490,6 +597,12 @@ mod tests {
                 dictionary: DictionaryOptions {
                     field: FieldStyle::Singleline,
                 },
+                section: SectionOptions {
+                    spacing: SectionSpacing::AdditionalNewLine,
+                },
+                document: DocumentOptions {
+                    spacing: DocumentSpacing::EndNewLine,
+                },
             },
             expected: indoc! {r"
                 [ALPHA]
@@ -497,68 +610,124 @@ mod tests {
 
             "},
         });
-    static ION_FORMAT_MULTILINE_DICTIONARY_STRING_CASE: LazyLock<IonFormatTestCase> = LazyLock::new(
-        || IonFormatTestCase {
-            raw: indoc! {r#"
-                [Data]
-                select = "
-                    SELECT column
-                    FROM table t1
-                    INNER JOIN t2
-                        ON t1.id = t2.
-                    WHERE t1.userid = {{ user_id }}
-                    ORDER BY name ASC
-                "
-
-                [Table]
-                |   col1   |
-                |--------|
-                | name1 |
-                | name2 |
-            "#},
-            options: FormatOptions {
-                dictionary: DictionaryOptions {
-                    field: FieldStyle::Singleline,
-                },
+    const TEST_1A_BASE_CASE: IonFormatTestCase = IonFormatTestCase {
+        description: "TEST_1A base input with singleline dictionary, single newline section, single newline document",
+        raw: indoc! {r#"
+            [Data]
+            select = "
+                SELECT column
+                FROM table t1
+                INNER JOIN t2
+                    ON t1.id = t2.
+                WHERE t1.userid = {{ user_id }}
+                ORDER BY name ASC
+            "
+            |   col1   |
+            |--------|
+            | name1 |
+            | name2 |
+        "#},
+        options: FormatOptions {
+            dictionary: DictionaryOptions {
+                field: FieldStyle::Singleline,
             },
-            expected: indoc! {r#"
+            section: SectionOptions {
+                spacing: SectionSpacing::NewLine,
+            },
+            document: DocumentOptions {
+                spacing: DocumentSpacing::EndNewLine,
+            },
+        },
+        expected: indoc! {r#"
+            [Data]
+            select = "\n    SELECT column\n    FROM table t1\n    INNER JOIN t2\n        ON t1.id = t2.\n    WHERE t1.userid = {{ user_id }}\n    ORDER BY name ASC\n"
+            |  col1 |
+            |-------|
+            | name1 |
+            | name2 |
+
+        "#},
+    };
+    const TEST_1B_DICTIONARY_MULTILINE_CASE: IonFormatTestCase = IonFormatTestCase {
+        description: "TEST_1B same input as TEST_1A with multiline dictionary field style",
+        options: FormatOptions {
+            dictionary: DictionaryOptions {
+                field: FieldStyle::Multiline,
+            },
+            ..TEST_1A_BASE_CASE.options
+        },
+        expected: indoc! {r#"
+            [Data]
+            select = "
+                SELECT column
+                FROM table t1
+                INNER JOIN t2
+                    ON t1.id = t2.
+                WHERE t1.userid = {{ user_id }}
+                ORDER BY name ASC
+            "
+            |  col1 |
+            |-------|
+            | name1 |
+            | name2 |
+
+        "#},
+        ..TEST_1A_BASE_CASE
+    };
+    const TEST_1C_SECTION_ADDITIONAL_NEWLINE_CASE: IonFormatTestCase = IonFormatTestCase {
+        description: "TEST_1C same input as TEST_1A with additional newline between dictionary and table",
+        options: FormatOptions {
+            section: SectionOptions {
+                spacing: SectionSpacing::AdditionalNewLine,
+            },
+            ..TEST_1A_BASE_CASE.options
+        },
+        expected: indoc! {r#"
                 [Data]
                 select = "\n    SELECT column\n    FROM table t1\n    INNER JOIN t2\n        ON t1.id = t2.\n    WHERE t1.userid = {{ user_id }}\n    ORDER BY name ASC\n"
 
-                [Table]
                 |  col1 |
                 |-------|
                 | name1 |
                 | name2 |
 
             "#},
-        },
-    );
-    const ION_FORMAT_MULTILINE_DICTIONARY_STRING_WITH_MULTILINE_STYLE_CASE: IonFormatTestCase =
-        IonFormatTestCase {
-            raw: indoc! {r#"
-            [Data]
-            select = "
-                SELECT column
-                FROM table t1
-                INNER JOIN t2
-                    ON t1.id = t2.
-                WHERE t1.userid = {{ user_id }}
-                ORDER BY name ASC
-            "
-
-            [Table]
-            |   col1   |
-            |--------|
-            | name1 |
-            | name2 |
-        "#},
-            options: FormatOptions {
-                dictionary: DictionaryOptions {
-                    field: FieldStyle::Multiline,
-                },
+        ..TEST_1A_BASE_CASE
+    };
+    const TEST_1D_DOCUMENT_ADDITIONAL_NEWLINE_CASE: IonFormatTestCase = IonFormatTestCase {
+        description: "TEST_1D same input as TEST_1A with additional newline at document end",
+        options: FormatOptions {
+            document: DocumentOptions {
+                spacing: DocumentSpacing::AdditionalEndNewLine,
             },
-            expected: indoc! {r#"
+            ..TEST_1A_BASE_CASE.options
+        },
+        expected: indoc! {r#"
+                [Data]
+                select = "\n    SELECT column\n    FROM table t1\n    INNER JOIN t2\n        ON t1.id = t2.\n    WHERE t1.userid = {{ user_id }}\n    ORDER BY name ASC\n"
+                |  col1 |
+                |-------|
+                | name1 |
+                | name2 |
+
+
+            "#},
+        ..TEST_1A_BASE_CASE
+    };
+    const TEST_1E_DEFAULT_BEHAVIOR_CASE: IonFormatTestCase = IonFormatTestCase {
+        description: "TEST_1E same input as TEST_1A with current default option combination",
+        options: FormatOptions {
+            dictionary: DictionaryOptions {
+                field: FieldStyle::Multiline,
+            },
+            section: SectionOptions {
+                spacing: SectionSpacing::AdditionalNewLine,
+            },
+            document: DocumentOptions {
+                spacing: DocumentSpacing::EndNewLine,
+            },
+        },
+        expected: indoc! {r#"
             [Data]
             select = "
                 SELECT column
@@ -569,55 +738,63 @@ mod tests {
                 ORDER BY name ASC
             "
 
-            [Table]
             |  col1 |
             |-------|
             | name1 |
             | name2 |
 
         "#},
-        };
-    const ION_FORMAT_MULTILINE_DICTIONARY_STRING_WITH_SINGLELINE_STYLE_CASE: IonFormatTestCase =
+        ..TEST_1A_BASE_CASE
+    };
+    const TEST_1F_TABLE_ONLY_WITH_DEFAULT_SECTION_SPACING_CASE: IonFormatTestCase =
         IonFormatTestCase {
+            description: "TEST_1F table-only input does not add section spacing when dictionary is empty",
+            raw: indoc! {r"
+            [TABLE]
+            | c |
+            |---|
+            | 1 |
+        "},
             options: FormatOptions {
                 dictionary: DictionaryOptions {
                     field: FieldStyle::Singleline,
                 },
+                section: SectionOptions {
+                    spacing: SectionSpacing::AdditionalNewLine,
+                },
+                document: DocumentOptions {
+                    spacing: DocumentSpacing::EndNewLine,
+                },
             },
-            expected: indoc! {r#"
-            [Data]
-            select = "\n    SELECT column\n    FROM table t1\n    INNER JOIN t2\n        ON t1.id = t2.\n    WHERE t1.userid = {{ user_id }}\n    ORDER BY name ASC\n"
+            expected: indoc! {r"
+            [TABLE]
+            | c |
+            |---|
+            | 1 |
 
-            [Table]
-            |  col1 |
-            |-------|
-            | name1 |
-            | name2 |
-
-        "#},
-            ..ION_FORMAT_MULTILINE_DICTIONARY_STRING_WITH_MULTILINE_STYLE_CASE
+        "},
         };
-
-    #[test_case(&*ION_FORMAT_CASE; "formats ion document")]
-    #[test_case(&*ION_FORMAT_NON_STRING_DICTIONARY_CASE; "formats non string dictionary value")]
-    #[test_case(
-        &*ION_FORMAT_MULTILINE_DICTIONARY_STRING_CASE;
-        "formats multiline dictionary string value"
-    )]
-    #[test_case(
-        &ION_FORMAT_MULTILINE_DICTIONARY_STRING_WITH_SINGLELINE_STYLE_CASE;
-        "formats multiline dictionary string with singleline style option"
-    )]
-    #[test_case(
-        &ION_FORMAT_MULTILINE_DICTIONARY_STRING_WITH_MULTILINE_STYLE_CASE;
-        "formats multiline dictionary string with multiline style option"
-    )]
+    #[test_case(&*ION_FORMAT_CASE; "TEST_0A")]
+    #[test_case(&*ION_FORMAT_NON_STRING_DICTIONARY_CASE; "TEST_0B")]
+    #[test_case(&TEST_1A_BASE_CASE; "TEST_1A")]
+    #[test_case(&TEST_1B_DICTIONARY_MULTILINE_CASE; "TEST_1B")]
+    #[test_case(&TEST_1C_SECTION_ADDITIONAL_NEWLINE_CASE; "TEST_1C")]
+    #[test_case(&TEST_1D_DOCUMENT_ADDITIONAL_NEWLINE_CASE; "TEST_1D")]
+    #[test_case(&TEST_1E_DEFAULT_BEHAVIOR_CASE; "TEST_1E")]
+    #[test_case(&TEST_1F_TABLE_ONLY_WITH_DEFAULT_SECTION_SPACING_CASE; "TEST_1F")]
     fn format_ion_document(case: &IonFormatTestCase) {
         let ion = case.raw.parse::<Ion>().unwrap();
-        assert_eq!(case.expected, format_ion_with_options(&ion, case.options));
         assert_eq!(
             case.expected,
-            display_with_options(&ion, case.options).to_string()
+            format_ion_with_options(&ion, case.options),
+            "{}",
+            case.description
+        );
+        assert_eq!(
+            case.expected,
+            display_with_options(&ion, case.options).to_string(),
+            "{}",
+            case.description
         );
     }
 

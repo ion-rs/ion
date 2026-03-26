@@ -5,7 +5,21 @@ Repository and workspace maintenance changes are intentionally omitted.
 
 ## Unreleased
 
-No changes yet.
+## 0.14.0
+
+### Added
+
+- Add section spacing option `section-spacing=newline|additional-newline` to control blank-line insertion between section dictionary fields and table rows
+- Add document spacing option `document-spacing=end-newline|additional-end-newline` to control trailing newline behavior at end of document
+
+### Changed
+
+- Use `document-spacing=end-newline|additional-end-newline` names in CLI style values
+
+### Breaking changes
+
+- Change default section formatting to insert an empty line between dictionary fields and table rows
+  (`section-spacing=additional-newline` is now the default; use `section-spacing=newline` to keep prior output)
 
 ## 0.13.0
 

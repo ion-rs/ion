@@ -22,7 +22,13 @@ Options:
       --style <KEY=VALUE>
           Style options in `key=value` form (repeatable).
           
-          Supported: - `dictionary-field=multiline` (default) - `dictionary-field=singleline`
+          Supported:
+          - `dictionary-field=multiline` (default)
+          - `dictionary-field=singleline`
+          - `section-spacing=additional-newline` (default)
+          - `section-spacing=newline`
+          - `document-spacing=end-newline` (default)
+          - `document-spacing=additional-end-newline`
 
   -h, --help
           Print help (see a summary with '-h')
@@ -34,10 +40,10 @@ Options:
 
 ```console
 $ ion-fmt --version
-ion-fmt 0.13.0
+ion-fmt 0.14.0
 
 $ ion-fmt -V
-ion-fmt 0.13.0
+ion-fmt 0.14.0
 
 ```
 
@@ -47,6 +53,7 @@ $ ion-fmt stdout tests/readme/unformatted.ion
 title = "rate-plan"
 active = true
 priority = 10
+
 |   day    | market | room |  net   | seats |
 |----------|--------|------|--------|-------|
 | 20260101 | PL     | DBL  |  120.5 |     3 |
@@ -57,6 +64,7 @@ priority = 10
 source = "legacy"
 enabled = false
 batch = 7
+
 | 1 | alpha | PL |  11.2 |  ok  |
 |---|-------|----|-------|------|
 | 3 | gamma | UK | 13.75 | ok   |
@@ -79,6 +87,7 @@ $ cat tests/readme/unformatted.ion | ion-fmt
 title = "rate-plan"
 active = true
 priority = 10
+
 |   day    | market | room |  net   | seats |
 |----------|--------|------|--------|-------|
 | 20260101 | PL     | DBL  |  120.5 |     3 |
@@ -89,6 +98,7 @@ priority = 10
 source = "legacy"
 enabled = false
 batch = 7
+
 | 1 | alpha | PL |  11.2 |  ok  |
 |---|-------|----|-------|------|
 | 3 | gamma | UK | 13.75 | ok   |

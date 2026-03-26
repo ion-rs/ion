@@ -18,7 +18,8 @@
 //! - [`write_formatted_file_with_options`] rewrites a file in place when formatting changes it
 //! - [`display_with_options`] and [`format_ion_with_options`] operate on a pre-parsed [`ion::Ion`] value
 //! - [`DictionaryDisplay`] and [`DictionaryFieldDisplay`] render dictionary-only output
-//! - [`FormatOptions`] controls style decisions such as dictionary string rendering
+//! - [`FormatOptions`] controls style decisions such as dictionary string rendering,
+//!   section spacing, and document trailing newlines
 //!
 //! # Examples
 //!
@@ -45,7 +46,10 @@
 //!
 //! ```rust
 //! use ion::Ion;
-//! use ion_fmt::{DictionaryOptions, FieldStyle, FormatOptions, format_ion_with_options};
+//! use ion_fmt::{
+//!     DictionaryOptions, DocumentOptions, DocumentSpacing, FieldStyle, FormatOptions,
+//!     SectionOptions, SectionSpacing, format_ion_with_options,
+//! };
 //!
 //! let ion: Ion = "[A]\n[B]\n".parse().unwrap();
 //! let formatted = format_ion_with_options(
@@ -53,6 +57,12 @@
 //!     FormatOptions {
 //!         dictionary: DictionaryOptions {
 //!             field: FieldStyle::Singleline,
+//!         },
+//!         section: SectionOptions {
+//!             spacing: SectionSpacing::NewLine,
+//!         },
+//!         document: DocumentOptions {
+//!             spacing: DocumentSpacing::EndNewLine,
 //!         },
 //!     },
 //! );
@@ -66,8 +76,9 @@ mod error;
 
 /// Display wrapper and helpers used to render formatted Ion output.
 pub use display::{
-    DictionaryDisplay, DictionaryFieldDisplay, DictionaryOptions, FieldStyle, FormatOptions,
-    IonDisplay, display_with_options, format_ion_with_options,
+    DictionaryDisplay, DictionaryFieldDisplay, DictionaryOptions, DocumentOptions, DocumentSpacing,
+    FieldStyle, FormatOptions, IonDisplay, SectionOptions, SectionSpacing, display_with_options,
+    format_ion_with_options,
 };
 /// Error type returned by file-oriented formatting APIs.
 pub use error::FormatError;
@@ -162,7 +173,8 @@ pub fn write_formatted_file_with_options(
 #[cfg(test)]
 mod tests {
     use super::{
-        DictionaryOptions, FieldStyle, FormatOptions, FormatResult, check_str_with_options,
+        DictionaryOptions, DocumentOptions, DocumentSpacing, FieldStyle, FormatOptions,
+        FormatResult, SectionOptions, SectionSpacing, check_str_with_options,
         format_file_with_options, format_str_with_options, write_formatted_file_with_options,
     };
     use indoc::indoc;
@@ -285,6 +297,12 @@ mod tests {
             dictionary: DictionaryOptions {
                 field: FieldStyle::Multiline,
             },
+            section: SectionOptions {
+                spacing: SectionSpacing::NewLine,
+            },
+            document: DocumentOptions {
+                spacing: DocumentSpacing::EndNewLine,
+            },
         },
         expected: indoc! {r#"
                 [Data]
@@ -312,6 +330,12 @@ mod tests {
             dictionary: DictionaryOptions {
                 field: FieldStyle::Singleline,
             },
+            section: SectionOptions {
+                spacing: SectionSpacing::NewLine,
+            },
+            document: DocumentOptions {
+                spacing: DocumentSpacing::EndNewLine,
+            },
         },
         expected: indoc! {r#"
                 [Data]
@@ -326,6 +350,110 @@ mod tests {
             "#},
         ..FORMAT_MULTILINE_DICTIONARY_STRING_WITH_MULTILINE_STYLE_CASE
     };
+    const FORMAT_DICTIONARY_AND_TABLE_WITH_NEWLINE_SECTION_SPACING_CASE:
+        FormatStringWithOptionsTestCase = FormatStringWithOptionsTestCase {
+        raw: indoc! {r#"
+                [ALPHA]
+                name = "foo"
+                | col |
+                |-----|
+                | x   |
+            "#},
+        options: FormatOptions {
+            dictionary: DictionaryOptions {
+                field: FieldStyle::Singleline,
+            },
+            section: SectionOptions {
+                spacing: SectionSpacing::NewLine,
+            },
+            document: DocumentOptions {
+                spacing: DocumentSpacing::EndNewLine,
+            },
+        },
+        expected: indoc! {r#"
+                [ALPHA]
+                name = "foo"
+                | col |
+                |-----|
+                | x   |
+
+            "#},
+    };
+    const FORMAT_DICTIONARY_AND_TABLE_WITH_ADDITIONAL_NEWLINE_SECTION_SPACING_CASE:
+        FormatStringWithOptionsTestCase = FormatStringWithOptionsTestCase {
+        options: FormatOptions {
+            dictionary: DictionaryOptions {
+                field: FieldStyle::Singleline,
+            },
+            section: SectionOptions {
+                spacing: SectionSpacing::AdditionalNewLine,
+            },
+            document: DocumentOptions {
+                spacing: DocumentSpacing::EndNewLine,
+            },
+        },
+        expected: indoc! {r#"
+                [ALPHA]
+                name = "foo"
+
+                | col |
+                |-----|
+                | x   |
+
+            "#},
+        ..FORMAT_DICTIONARY_AND_TABLE_WITH_NEWLINE_SECTION_SPACING_CASE
+    };
+    const FORMAT_TABLE_ONLY_WITH_NEWLINE_SECTION_SPACING_CASE: FormatStringWithOptionsTestCase =
+        FormatStringWithOptionsTestCase {
+            raw: indoc! {r"
+                [TABLE]
+                | c |
+                |---|
+                | 1 |
+            "},
+            options: FormatOptions {
+                dictionary: DictionaryOptions {
+                    field: FieldStyle::Singleline,
+                },
+                section: SectionOptions {
+                    spacing: SectionSpacing::AdditionalNewLine,
+                },
+                document: DocumentOptions {
+                    spacing: DocumentSpacing::EndNewLine,
+                },
+            },
+            expected: indoc! {r"
+                [TABLE]
+                | c |
+                |---|
+                | 1 |
+
+            "},
+        };
+    const FORMAT_DOCUMENT_WITH_ADDITIONAL_NEWLINE_SPACING_CASE: FormatStringWithOptionsTestCase =
+        FormatStringWithOptionsTestCase {
+            options: FormatOptions {
+                dictionary: DictionaryOptions {
+                    field: FieldStyle::Singleline,
+                },
+                section: SectionOptions {
+                    spacing: SectionSpacing::NewLine,
+                },
+                document: DocumentOptions {
+                    spacing: DocumentSpacing::AdditionalEndNewLine,
+                },
+            },
+            expected: indoc! {r#"
+                [ALPHA]
+                name = "foo"
+                | col |
+                |-----|
+                | x   |
+
+
+            "#},
+            ..FORMAT_DICTIONARY_AND_TABLE_WITH_NEWLINE_SECTION_SPACING_CASE
+        };
 
     #[test_case(
         &FORMAT_MULTILINE_DICTIONARY_STRING_WITH_MULTILINE_STYLE_CASE;
@@ -334,6 +462,22 @@ mod tests {
     #[test_case(
         &FORMAT_MULTILINE_DICTIONARY_STRING_WITH_SINGLELINE_STYLE_CASE;
         "formats multiline dictionary string value with singleline style option"
+    )]
+    #[test_case(
+        &FORMAT_DICTIONARY_AND_TABLE_WITH_ADDITIONAL_NEWLINE_SECTION_SPACING_CASE;
+        "formats dictionary and table with extra spacing by default"
+    )]
+    #[test_case(
+        &FORMAT_DICTIONARY_AND_TABLE_WITH_NEWLINE_SECTION_SPACING_CASE;
+        "formats dictionary and table with single newline section spacing"
+    )]
+    #[test_case(
+        &FORMAT_TABLE_ONLY_WITH_NEWLINE_SECTION_SPACING_CASE;
+        "does not add section spacing when dictionary is empty"
+    )]
+    #[test_case(
+        &FORMAT_DOCUMENT_WITH_ADDITIONAL_NEWLINE_SPACING_CASE;
+        "adds additional newline at end of document when configured"
     )]
     fn format_with_options_cases(case: &FormatStringWithOptionsTestCase) {
         assert_eq!(
@@ -418,6 +562,12 @@ mod tests {
         let options = FormatOptions {
             dictionary: DictionaryOptions {
                 field: FieldStyle::Multiline,
+            },
+            section: SectionOptions {
+                spacing: SectionSpacing::NewLine,
+            },
+            document: DocumentOptions {
+                spacing: DocumentSpacing::EndNewLine,
             },
         };
 
