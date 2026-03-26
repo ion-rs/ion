@@ -528,7 +528,7 @@ mod tests {
     fn dictionary(entries: impl IntoIterator<Item = (&'static str, Value)>) -> Dictionary {
         let mut dictionary = Dictionary::new();
         for (key, value) in entries {
-            dictionary.insert(key.to_owned(), value);
+            dictionary.insert(key.into(), value);
         }
         dictionary
     }

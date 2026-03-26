@@ -6,13 +6,13 @@ use std::{error, fmt, str};
 #[derive(Debug, PartialEq)]
 pub enum Element {
     /// A section header like `[APP]`.
-    Section(String),
+    Section(Box<str>),
     /// A table row.
     Row(Vec<Value>),
     /// A dictionary entry like `key = value`.
-    Entry(String, Value),
+    Entry(Box<str>, Value),
     /// A comment line without the leading `#`.
-    Comment(String),
+    Comment(Box<str>),
 }
 
 /// Stateful parser for Ion text.
@@ -152,7 +152,7 @@ impl<'a> Parser<'a> {
         }
 
         Some(Element::Comment(
-            self.slice_to_including('\n').unwrap_or("").to_string(),
+            self.slice_to_including('\n').unwrap_or("").into(),
         ))
     }
 
@@ -166,7 +166,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn section_name(&mut self) -> String {
+    fn section_name(&mut self) -> Box<str> {
         self.eat('[');
         self.whitespace();
 
@@ -174,7 +174,8 @@ impl<'a> Parser<'a> {
             .by_ref()
             .map(|(_, c)| c)
             .take_while(|c| *c != ']')
-            .collect()
+            .collect::<String>()
+            .into()
     }
 
     fn entry(&mut self) -> Option<Element> {
@@ -191,9 +192,9 @@ impl<'a> Parser<'a> {
         None
     }
 
-    fn key_name(&mut self) -> Option<String> {
+    fn key_name(&mut self) -> Option<Box<str>> {
         self.slice_while(|ch| matches!(ch, 'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '-'))
-            .map(str::to_owned)
+            .map(Into::into)
     }
 
     fn value(&mut self) -> Option<Value> {
@@ -421,7 +422,7 @@ impl<'a> Parser<'a> {
                 map.insert(name, section);
             }
             None if self.accepted_sections.is_none() => {
-                map.insert("root".to_string(), section);
+                map.insert("root".into(), section);
             }
             _ => (),
         }
@@ -828,7 +829,7 @@ mod tests {
     fn dictionary(entries: Vec<(&str, Value)>) -> Value {
         let mut dictionary = Dictionary::new();
         for (key, value) in entries {
-            dictionary.insert(key.to_owned(), value);
+            dictionary.insert(key.into(), value);
         }
         Value::Dictionary(dictionary)
     }
@@ -840,7 +841,7 @@ mod tests {
     fn section(entries: Vec<(&str, Value)>, rows: Vec<Vec<Value>>) -> Section {
         let mut section = Section::new();
         for (key, value) in entries {
-            section.dictionary.insert(key.to_owned(), value);
+            section.dictionary.insert(key.into(), value);
         }
         section.rows = rows;
         section
@@ -849,7 +850,7 @@ mod tests {
     fn sections(entries: Vec<(&str, Section)>) -> Sections {
         let mut sections = Sections::new();
         for (name, section) in entries {
-            sections.insert(name.to_owned(), section);
+            sections.insert(name.into(), section);
         }
         sections
     }
@@ -1043,15 +1044,15 @@ mod tests {
                 | this |
             "#,
             expected: vec![
-                Element::Section("dict".to_owned()),
-                Entry("first".to_owned(), string("first")),
-                Comment(" comment\n".to_owned()),
-                Entry("second".to_owned(), string("another")),
-                Entry("whitespace".to_owned(), string("  ")),
-                Entry("empty".to_owned(), string("")),
-                Entry("some_bool".to_owned(), Value::Boolean(true)),
+                Element::Section("dict".into()),
+                Entry("first".into(), string("first")),
+                Comment(" comment\n".into()),
+                Entry("second".into(), string("another")),
+                Entry("whitespace".into(), string("  ")),
+                Entry("empty".into(), string("")),
+                Entry("some_bool".into(), Value::Boolean(true)),
                 Entry(
-                    "ary".to_owned(),
+                    "ary".into(),
                     array(vec![
                         string("col1"),
                         Value::Integer(2),
@@ -1059,16 +1060,16 @@ mod tests {
                         Value::Boolean(false),
                     ]),
                 ),
-                Element::Section("table".to_owned()),
+                Element::Section("table".into()),
                 Row(row(&["abc", "def"])),
                 Row(row(&["---", "---"])),
                 Row(row(&["one", "two"])),
-                Comment(" comment\n".to_owned()),
+                Comment(" comment\n".into()),
                 Row(row(&["1", "2"])),
                 Row(row(&["2", "3"])),
-                Element::Section("three".to_owned()),
-                Entry("a".to_owned(), Value::Integer(1)),
-                Entry("B".to_owned(), Value::Integer(2)),
+                Element::Section("three".into()),
+                Entry("a".into(), Value::Integer(1)),
+                Entry("B".into(), Value::Integer(2)),
                 Row(row(&["this"])),
             ],
         });
@@ -1076,9 +1077,9 @@ mod tests {
         LazyLock::new(|| ParseIteratorTestCase {
             raw: "foo = \"bar\"\r\n# comment\r\nbaz = false\r\n",
             expected: vec![
-                Entry("foo".to_owned(), string("bar")),
-                Comment(" comment\r\n".to_owned()),
-                Entry("baz".to_owned(), Value::Boolean(false)),
+                Entry("foo".into(), string("bar")),
+                Comment(" comment\r\n".into()),
+                Entry("baz".into(), Value::Boolean(false)),
             ],
         });
 
@@ -1094,7 +1095,7 @@ mod tests {
 
     static COMMENT_PRESENT_CASE: LazyLock<CommentTestCase> = LazyLock::new(|| CommentTestCase {
         raw: "# comment\n",
-        expected: Some(Comment(" comment\n".to_owned())),
+        expected: Some(Comment(" comment\n".into())),
         next: None,
     });
     const COMMENT_ABSENT_CASE: CommentTestCase = CommentTestCase {
@@ -1530,7 +1531,10 @@ mod tests {
     #[test_case(&SECTION_ORDERING_CASE; "section ordering depends on backend")]
     fn section_ordering(case: &SectionOrderingTestCase) {
         let sections = Parser::new(case.raw).read().unwrap();
-        let actual = sections.keys().map(String::as_str).collect::<Vec<_>>();
+        let actual = sections
+            .keys()
+            .map(std::convert::AsRef::as_ref)
+            .collect::<Vec<_>>();
         assert_eq!(case.expected, actual.as_slice());
     }
 
@@ -1581,10 +1585,10 @@ mod tests {
             "#,
             accepted_sections: &["ACCEPTED"],
             expected_prefix: vec![
-                Element::Section("ACCEPTED".to_owned()),
-                Entry("key".to_owned(), string("value")),
+                Element::Section("ACCEPTED".into()),
+                Entry("key".into(), string("value")),
             ],
-            expected_after_none: Some(Entry("other".to_owned(), string("ignored"))),
+            expected_after_none: Some(Entry("other".into(), string("ignored"))),
         });
 
     #[test_case(&*FILTER_ITERATION_EXHAUSTS_ACCEPTED_SECTIONS; "accepted sections exhausted")]

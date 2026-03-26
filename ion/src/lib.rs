@@ -31,7 +31,7 @@
 //!
 //! let app = ion.get_mut("APP").unwrap();
 //! app.dictionary
-//!     .insert("enabled".to_owned(), Value::Boolean(true));
+//!     .insert("enabled".into(), Value::Boolean(true));
 //!
 //! assert_eq!(Some("demo"), app.get("name").and_then(Value::as_str));
 //! # Ok::<(), ion::IonError>(())
@@ -59,29 +59,29 @@ pub use self::parser::*;
 ///
 /// The concrete map type depends on the `dictionary-indexmap` feature:
 ///
-/// - default: `BTreeMap<String, Value>`
-/// - `dictionary-indexmap`: `IndexMap<String, Value>`
+/// - default: `BTreeMap<Box<str>, Value>`
+/// - `dictionary-indexmap`: `IndexMap<Box<str>, Value>`
 #[cfg(feature = "dictionary-indexmap")]
-pub type Dictionary = indexmap::IndexMap<String, Value>;
+pub type Dictionary = indexmap::IndexMap<Box<str>, Value>;
 /// Dictionary storage used by [`Section::dictionary`][crate::Section::dictionary].
 ///
-/// In default builds this is `BTreeMap<String, Value>`.
+/// In default builds this is `BTreeMap<Box<str>, Value>`.
 #[cfg(not(feature = "dictionary-indexmap"))]
-pub type Dictionary = std::collections::BTreeMap<String, Value>;
+pub type Dictionary = std::collections::BTreeMap<Box<str>, Value>;
 
 /// Top-level section storage used by [`Ion`].
 ///
 /// The concrete map type depends on the `dictionary-indexmap` feature:
 ///
-/// - default: `BTreeMap<String, Section>`
-/// - `dictionary-indexmap`: `IndexMap<String, Section>`
+/// - default: `BTreeMap<Box<str>, Section>`
+/// - `dictionary-indexmap`: `IndexMap<Box<str>, Section>`
 #[cfg(feature = "dictionary-indexmap")]
-pub type Sections = indexmap::IndexMap<String, Section>;
+pub type Sections = indexmap::IndexMap<Box<str>, Section>;
 /// Top-level section storage used by [`Ion`].
 ///
-/// In default builds this is `BTreeMap<String, Section>`.
+/// In default builds this is `BTreeMap<Box<str>, Section>`.
 #[cfg(not(feature = "dictionary-indexmap"))]
-pub type Sections = std::collections::BTreeMap<String, Section>;
+pub type Sections = std::collections::BTreeMap<Box<str>, Section>;
 
 /// A single table row stored inside a [`Section`].
 pub type Row = Vec<Value>;

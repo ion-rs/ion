@@ -1,6 +1,6 @@
 [package]
 name = "ion"
-version = "0.12.0"
+version = "0.13.0"
 description = "*.ion file parser"
 edition = "2024"
 license = "MIT"

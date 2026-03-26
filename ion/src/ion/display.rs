@@ -148,7 +148,7 @@ mod tests {
     fn section(entries: Vec<(&str, Value)>, rows: Vec<Vec<Value>>) -> Section {
         let mut section = Section::new();
         for (key, value) in entries {
-            section.dictionary.insert(key.to_owned(), value);
+            section.dictionary.insert(key.into(), value);
         }
         section.rows = rows;
         section
@@ -157,7 +157,7 @@ mod tests {
     fn sections(entries: Vec<(&str, Section)>) -> crate::Sections {
         let mut sections = crate::Sections::new();
         for (name, section) in entries {
-            sections.insert(name.to_owned(), section);
+            sections.insert(name.into(), section);
         }
         sections
     }
@@ -165,7 +165,7 @@ mod tests {
     fn dictionary(entries: Vec<(&str, Value)>) -> Value {
         let mut dictionary = crate::Dictionary::new();
         for (key, value) in entries {
-            dictionary.insert(key.to_owned(), value);
+            dictionary.insert(key.into(), value);
         }
         Value::Dictionary(dictionary)
     }
