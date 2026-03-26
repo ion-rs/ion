@@ -13,8 +13,9 @@
 
 use clap::{Parser, Subcommand};
 use ion_fmt::{
-    DictionaryOptions, FieldStyle, FormatOptions, format_file_with_options,
-    format_str_with_options, write_formatted_file_with_options,
+    DictionaryOptions, DocumentOptions, DocumentSpacing, FieldStyle, FormatOptions, SectionOptions,
+    SectionSpacing, format_file_with_options, format_str_with_options,
+    write_formatted_file_with_options,
 };
 use std::io::{self, IsTerminal, Read};
 use std::path::PathBuf;
@@ -53,6 +54,8 @@ enum CliExitCode {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum StyleOption {
     DictionaryField(FieldStyle),
+    SectionSpacing(SectionSpacing),
+    DocumentSpacing(DocumentSpacing),
 }
 
 impl FromStr for StyleOption {
@@ -65,8 +68,10 @@ impl FromStr for StyleOption {
 
         match key {
             "dictionary-field" => value.parse().map(Self::DictionaryField),
+            "section-spacing" => value.parse().map(Self::SectionSpacing),
+            "document-spacing" => value.parse().map(Self::DocumentSpacing),
             _ => Err(format!(
-                "Unsupported `--style` key `{key}`. Supported keys: `dictionary-field`."
+                "Unsupported `--style` key `{key}`. Supported keys: `dictionary-field`, `section-spacing`, `document-spacing`."
             )),
         }
     }
@@ -80,7 +85,16 @@ struct Cli {
     /// Supported:
     /// - `dictionary-field=multiline` (default)
     /// - `dictionary-field=singleline`
-    #[arg(long = "style", value_name = "KEY=VALUE", global = true)]
+    /// - `section-spacing=additional-newline` (default)
+    /// - `section-spacing=newline`
+    /// - `document-spacing=end-newline` (default)
+    /// - `document-spacing=additional-end-newline`
+    #[arg(
+        long = "style",
+        value_name = "KEY=VALUE",
+        global = true,
+        verbatim_doc_comment
+    )]
     styles: Vec<StyleOption>,
 
     #[command(subcommand)]
@@ -287,15 +301,27 @@ impl Cli {
     #[must_use]
     fn format_options(&self) -> FormatOptions {
         let mut field = FieldStyle::Multiline;
+        let mut spacing = SectionSpacing::AdditionalNewLine;
+        let mut document_spacing = DocumentSpacing::EndNewLine;
 
         for option in &self.styles {
             match option {
                 StyleOption::DictionaryField(next_style) => field = *next_style,
+                StyleOption::SectionSpacing(next_spacing) => {
+                    spacing = *next_spacing;
+                }
+                StyleOption::DocumentSpacing(next_spacing) => {
+                    document_spacing = *next_spacing;
+                }
             }
         }
 
         FormatOptions {
             dictionary: DictionaryOptions { field },
+            section: SectionOptions { spacing },
+            document: DocumentOptions {
+                spacing: document_spacing,
+            },
         }
     }
 }
@@ -303,8 +329,8 @@ impl Cli {
 #[cfg(test)]
 mod tests {
     use super::{
-        Cli, CliCommand, CliExitCode, FieldStyle, InputKind, Mode, missing_input_error,
-        resolve_input_kind, run_with_cli,
+        Cli, CliCommand, CliExitCode, DocumentSpacing, FieldStyle, InputKind, Mode, SectionSpacing,
+        missing_input_error, resolve_input_kind, run_with_cli,
     };
     use clap::Parser;
     use pretty_assertions::assert_eq;
@@ -438,26 +464,34 @@ mod tests {
     #[derive(Debug)]
     struct ParseStyleCliTestCase {
         args: Vec<&'static str>,
-        expected_style: Option<FieldStyle>,
+        expected_field_style: Option<FieldStyle>,
+        expected_spacing: Option<SectionSpacing>,
+        expected_document_spacing: Option<DocumentSpacing>,
         expected_error_fragment: Option<&'static str>,
     }
 
     static STYLE_DEFAULT_CASE: LazyLock<ParseStyleCliTestCase> =
         LazyLock::new(|| ParseStyleCliTestCase {
             args: vec!["ion-fmt"],
-            expected_style: Some(FieldStyle::Multiline),
+            expected_field_style: Some(FieldStyle::Multiline),
+            expected_spacing: Some(SectionSpacing::AdditionalNewLine),
+            expected_document_spacing: Some(DocumentSpacing::EndNewLine),
             expected_error_fragment: None,
         });
     static STYLE_SINGLELINE_CASE: LazyLock<ParseStyleCliTestCase> =
         LazyLock::new(|| ParseStyleCliTestCase {
             args: vec!["ion-fmt", "--style", "dictionary-field=singleline"],
-            expected_style: Some(FieldStyle::Singleline),
+            expected_field_style: Some(FieldStyle::Singleline),
+            expected_spacing: Some(SectionSpacing::AdditionalNewLine),
+            expected_document_spacing: Some(DocumentSpacing::EndNewLine),
             expected_error_fragment: None,
         });
     static STYLE_MULTILINE_CASE: LazyLock<ParseStyleCliTestCase> =
         LazyLock::new(|| ParseStyleCliTestCase {
             args: vec!["ion-fmt", "--style", "dictionary-field=multiline"],
-            expected_style: Some(FieldStyle::Multiline),
+            expected_field_style: Some(FieldStyle::Multiline),
+            expected_spacing: Some(SectionSpacing::AdditionalNewLine),
+            expected_document_spacing: Some(DocumentSpacing::EndNewLine),
             expected_error_fragment: None,
         });
     static STYLE_LAST_WINS_CASE: LazyLock<ParseStyleCliTestCase> =
@@ -469,47 +503,143 @@ mod tests {
                 "--style",
                 "dictionary-field=multiline",
             ],
-            expected_style: Some(FieldStyle::Multiline),
+            expected_field_style: Some(FieldStyle::Multiline),
+            expected_spacing: Some(SectionSpacing::AdditionalNewLine),
+            expected_document_spacing: Some(DocumentSpacing::EndNewLine),
+            expected_error_fragment: None,
+        });
+    static STYLE_SECTION_SPACING_NEWLINE_CASE: LazyLock<ParseStyleCliTestCase> =
+        LazyLock::new(|| ParseStyleCliTestCase {
+            args: vec!["ion-fmt", "--style", "section-spacing=newline"],
+            expected_field_style: Some(FieldStyle::Multiline),
+            expected_spacing: Some(SectionSpacing::NewLine),
+            expected_document_spacing: Some(DocumentSpacing::EndNewLine),
+            expected_error_fragment: None,
+        });
+    static STYLE_SECTION_SPACING_ADDITIONAL_NEWLINE_CASE: LazyLock<ParseStyleCliTestCase> =
+        LazyLock::new(|| ParseStyleCliTestCase {
+            args: vec!["ion-fmt", "--style", "section-spacing=additional-newline"],
+            expected_field_style: Some(FieldStyle::Multiline),
+            expected_spacing: Some(SectionSpacing::AdditionalNewLine),
+            expected_document_spacing: Some(DocumentSpacing::EndNewLine),
+            expected_error_fragment: None,
+        });
+    static STYLE_DOCUMENT_SPACING_NEWLINE_CASE: LazyLock<ParseStyleCliTestCase> =
+        LazyLock::new(|| ParseStyleCliTestCase {
+            args: vec!["ion-fmt", "--style", "document-spacing=end-newline"],
+            expected_field_style: Some(FieldStyle::Multiline),
+            expected_spacing: Some(SectionSpacing::AdditionalNewLine),
+            expected_document_spacing: Some(DocumentSpacing::EndNewLine),
+            expected_error_fragment: None,
+        });
+    static STYLE_DOCUMENT_SPACING_ADDITIONAL_NEWLINE_CASE: LazyLock<ParseStyleCliTestCase> =
+        LazyLock::new(|| ParseStyleCliTestCase {
+            args: vec![
+                "ion-fmt",
+                "--style",
+                "document-spacing=additional-end-newline",
+            ],
+            expected_field_style: Some(FieldStyle::Multiline),
+            expected_spacing: Some(SectionSpacing::AdditionalNewLine),
+            expected_document_spacing: Some(DocumentSpacing::AdditionalEndNewLine),
             expected_error_fragment: None,
         });
     static STYLE_MISSING_VALUE_CASE: LazyLock<ParseStyleCliTestCase> =
         LazyLock::new(|| ParseStyleCliTestCase {
             args: vec!["ion-fmt", "--style", "dictionary-field"],
-            expected_style: None,
+            expected_field_style: None,
+            expected_spacing: None,
+            expected_document_spacing: None,
             expected_error_fragment: Some("Expected `key=value`"),
         });
     static STYLE_UNKNOWN_KEY_CASE: LazyLock<ParseStyleCliTestCase> =
         LazyLock::new(|| ParseStyleCliTestCase {
             args: vec!["ion-fmt", "--style", "table-column=singleline"],
-            expected_style: None,
-            expected_error_fragment: Some("Supported keys: `dictionary-field`"),
+            expected_field_style: None,
+            expected_spacing: None,
+            expected_document_spacing: None,
+            expected_error_fragment: Some(
+                "Supported keys: `dictionary-field`, `section-spacing`, `document-spacing`",
+            ),
         });
     static STYLE_UNKNOWN_VALUE_CASE: LazyLock<ParseStyleCliTestCase> =
         LazyLock::new(|| ParseStyleCliTestCase {
             args: vec!["ion-fmt", "--style", "dictionary-field=folded"],
-            expected_style: None,
+            expected_field_style: None,
+            expected_spacing: None,
+            expected_document_spacing: None,
             expected_error_fragment: Some("Expected `singleline` or `multiline`"),
+        });
+    static STYLE_UNKNOWN_SECTION_SPACING_VALUE_CASE: LazyLock<ParseStyleCliTestCase> =
+        LazyLock::new(|| ParseStyleCliTestCase {
+            args: vec!["ion-fmt", "--style", "section-spacing=double"],
+            expected_field_style: None,
+            expected_spacing: None,
+            expected_document_spacing: None,
+            expected_error_fragment: Some("Expected `newline` or `additional-newline`"),
+        });
+    static STYLE_UNKNOWN_DOCUMENT_SPACING_VALUE_CASE: LazyLock<ParseStyleCliTestCase> =
+        LazyLock::new(|| ParseStyleCliTestCase {
+            args: vec!["ion-fmt", "--style", "document-spacing=double"],
+            expected_field_style: None,
+            expected_spacing: None,
+            expected_document_spacing: None,
+            expected_error_fragment: Some("Expected `end-newline` or `additional-end-newline`"),
         });
 
     #[test_case(&*STYLE_DEFAULT_CASE; "default style is multiline")]
     #[test_case(&*STYLE_SINGLELINE_CASE; "parses explicit singleline")]
     #[test_case(&*STYLE_MULTILINE_CASE; "parses multiline")]
     #[test_case(&*STYLE_LAST_WINS_CASE; "last style wins when repeated")]
+    #[test_case(
+        &*STYLE_SECTION_SPACING_NEWLINE_CASE;
+        "parses section dictionary-table spacing style"
+    )]
+    #[test_case(
+        &*STYLE_SECTION_SPACING_ADDITIONAL_NEWLINE_CASE;
+        "parses section dictionary-table additional spacing style"
+    )]
+    #[test_case(
+        &*STYLE_DOCUMENT_SPACING_NEWLINE_CASE;
+        "parses document spacing style"
+    )]
+    #[test_case(
+        &*STYLE_DOCUMENT_SPACING_ADDITIONAL_NEWLINE_CASE;
+        "parses document additional spacing style"
+    )]
     #[test_case(&*STYLE_MISSING_VALUE_CASE; "rejects style missing value")]
     #[test_case(&*STYLE_UNKNOWN_KEY_CASE; "rejects unknown style key")]
     #[test_case(&*STYLE_UNKNOWN_VALUE_CASE; "rejects unknown dictionary-field style value")]
+    #[test_case(
+        &*STYLE_UNKNOWN_SECTION_SPACING_VALUE_CASE;
+        "rejects unknown section dictionary-table spacing value"
+    )]
+    #[test_case(
+        &*STYLE_UNKNOWN_DOCUMENT_SPACING_VALUE_CASE;
+        "rejects unknown document spacing value"
+    )]
     fn parse_style_cli_cases(case: &ParseStyleCliTestCase) {
         match Cli::try_parse_from(case.args.clone()) {
             Ok(cli) => {
                 assert_eq!(case.expected_error_fragment, None);
                 assert_eq!(
-                    case.expected_style,
+                    case.expected_field_style,
                     Some(cli.format_options().dictionary.field)
+                );
+                assert_eq!(
+                    case.expected_spacing,
+                    Some(cli.format_options().section.spacing)
+                );
+                assert_eq!(
+                    case.expected_document_spacing,
+                    Some(cli.format_options().document.spacing)
                 );
             }
             Err(error) => {
                 let rendered = error.to_string();
-                assert_eq!(case.expected_style, None);
+                assert_eq!(case.expected_field_style, None);
+                assert_eq!(case.expected_spacing, None);
+                assert_eq!(case.expected_document_spacing, None);
                 assert!(
                     case.expected_error_fragment
                         .is_some_and(|fragment| rendered.contains(fragment)),
