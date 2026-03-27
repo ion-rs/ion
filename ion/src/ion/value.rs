@@ -236,7 +236,7 @@ mod tests {
         expected_dictionary_lookup: None,
     });
     static DICTIONARY_HELPER_CASE: LazyLock<HelperTestCase> = LazyLock::new(|| {
-        let dictionary = Dictionary::from([("name".to_owned(), Value::new_string("foo"))]);
+        let dictionary = Dictionary::from([("name".into(), Value::new_string("foo"))]);
         HelperTestCase {
             value: Value::Dictionary(dictionary),
             expected_type: "dictionary",

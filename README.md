@@ -25,14 +25,14 @@ Default ordered backend (`BTreeMap` for sections and dictionaries):
 
 ```toml
 [dependencies]
-ion = "0.12.0"
+ion = "0.13.0"
 ```
 
 Insertion-ordered backend (`IndexMap` for sections and dictionaries):
 
 ```toml
 [dependencies]
-ion = { version = "0.12.0", features = ["dictionary-indexmap"] }
+ion = { version = "0.13.0", features = ["dictionary-indexmap"] }
 ```
 
 ## Related Crates

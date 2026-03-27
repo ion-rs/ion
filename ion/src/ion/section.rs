@@ -421,7 +421,7 @@ mod tests {
         let mut section = Section::with_capacity(2);
         section
             .dictionary
-            .insert("name".to_owned(), Value::new_string("foo"));
+            .insert("name".into(), Value::new_string("foo"));
         section.rows = vec![
             vec![Value::new_string("h1")],
             vec![Value::new_string("---")],
@@ -470,7 +470,7 @@ mod tests {
         let mut section = Section::new();
         section
             .dictionary
-            .insert("name".to_owned(), Value::new_string("foo"));
+            .insert("name".into(), Value::new_string("foo"));
 
         match section.get_mut("name") {
             Some(Value::String(value)) => *value = "bar".into(),

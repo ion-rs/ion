@@ -57,18 +57,20 @@ impl Ion {
     ///
     /// This method attempts to find a section by its key within the collection of sections.
     /// If the section exists, it returns an `Option` containing a tuple of the key as a
-    /// reference to a `String` and the value as a reference to a `Section`. If the key
+    /// reference to a string slice and the value as a reference to a `Section`. If the key
     /// does not exist within the sections, it returns `None`.
     ///
     /// # Returns
     ///
-    /// Returns `Option<(&String, &Section)>`. If the key is found, the return value is
-    /// `Some((&String, &Section))`, where the first element is a reference to the key
+    /// Returns `Option<(&str, &Section)>`. If the key is found, the return value is
+    /// `Some((&str, &Section))`, where the first element is a reference to the key
     /// and the second element is a reference to the corresponding `Section`. If the key
     /// is not found, it returns `None`.
     #[must_use]
-    pub fn get_key_value(&self, key: &str) -> Option<(&String, &Section)> {
-        self.sections.get_key_value(key)
+    pub fn get_key_value(&self, key: &str) -> Option<(&str, &Section)> {
+        self.sections
+            .get_key_value(key)
+            .map(|(name, section)| (name.as_ref(), section))
     }
 
     /// # Errors
@@ -95,8 +97,10 @@ impl Ion {
     }
 
     /// Iterates over section name / section pairs.
-    pub fn iter(&self) -> impl Iterator<Item = (&String, &Section)> {
-        self.sections.iter()
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &Section)> {
+        self.sections
+            .iter()
+            .map(|(name, section)| (name.as_ref(), section))
     }
 }
 
@@ -188,7 +192,7 @@ mod tests {
     fn section(entries: Vec<(&str, Value)>) -> Section {
         let mut section = Section::new();
         for (key, value) in entries {
-            section.dictionary.insert(key.to_owned(), value);
+            section.dictionary.insert(key.into(), value);
         }
         section
     }
@@ -196,7 +200,7 @@ mod tests {
     fn sections(entries: Vec<(&str, Section)>) -> Sections {
         let mut sections = Sections::new();
         for (name, section) in entries {
-            sections.insert(name.to_owned(), section);
+            sections.insert(name.into(), section);
         }
         sections
     }
@@ -366,7 +370,7 @@ mod tests {
             Some(section) => {
                 section
                     .dictionary
-                    .insert("name".to_owned(), Value::new_string("bar"));
+                    .insert("name".into(), Value::new_string("bar"));
             }
             None => panic!("expected section"),
         }

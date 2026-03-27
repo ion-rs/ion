@@ -5,6 +5,19 @@ Repository and workspace maintenance changes are intentionally omitted.
 
 ## Unreleased
 
+## 0.13.0
+
+### Changed
+
+- Store `Dictionary` and top-level `Sections` keys as `Box<str>` to reduce per-key overhead
+
+### Breaking changes
+
+- `Dictionary` is now `BTreeMap<Box<str>, Value>` (or `IndexMap<Box<str>, Value>` with `dictionary-indexmap`)
+- `Sections` is now `BTreeMap<Box<str>, Section>` (or `IndexMap<Box<str>, Section>` with `dictionary-indexmap`)
+- `Ion::get_key_value()` now returns `Option<(&str, &Section)>`
+- `Ion::iter()` now yields `(&str, &Section)`
+
 ## 0.12.0
 
 ### Changed
