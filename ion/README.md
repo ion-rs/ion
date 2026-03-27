@@ -79,12 +79,10 @@ assert!(ion.get("IGNORED").is_none());
 assert!(ion.get("KEPT").is_some());
 ```
 
-## Backend Choice
+## Feature Flags
 
-`Dictionary` and `Sections` use:
-
-- `BTreeMap` by default.
-- `IndexMap` with `dictionary-indexmap`.
+- `default`: uses `BTreeMap` for `Sections` and `Dictionary`, so section names and dictionary keys are sorted.
+- `dictionary-indexmap`: uses `IndexMap` for `Sections` and `Dictionary`, preserving insertion order.
 
 This affects ordering in:
 
