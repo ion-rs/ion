@@ -40,10 +40,10 @@ Options:
 
 ```console
 $ ion-fmt --version
-ion-fmt 0.14.0
+ion-fmt 0.14.1
 
 $ ion-fmt -V
-ion-fmt 0.14.0
+ion-fmt 0.14.1
 
 ```
 
@@ -65,8 +65,8 @@ source = "legacy"
 enabled = false
 batch = 7
 
-| 1 | alpha | PL |  11.2 |  ok  |
-|---|-------|----|-------|------|
+| 1 | alpha | PL |  11.2 | ok   |
+| 2 | beta  | DE |     9 | hold |
 | 3 | gamma | UK | 13.75 | ok   |
 
 

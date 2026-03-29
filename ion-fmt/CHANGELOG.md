@@ -5,6 +5,13 @@ Repository and workspace maintenance changes are intentionally omitted.
 
 ## Unreleased
 
+## 0.14.1
+
+### Fixed
+
+- Preserve all data rows when formatting sections without a table header; `ion-fmt` no longer drops a row during display
+- Preserve multiline formatting for nested dictionary fields when `dictionary-field=multiline`
+
 ## 0.14.0
 
 ### Added
