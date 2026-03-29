@@ -340,6 +340,7 @@ mod tests {
 
     #[derive(Debug)]
     struct ResolveInputKindTestCase {
+        description: &'static str,
         paths: Vec<PathBuf>,
         stdin_is_terminal: bool,
         expected: Option<InputKind>,
@@ -347,30 +348,35 @@ mod tests {
 
     static PIPED_STDIN_CASE: LazyLock<ResolveInputKindTestCase> =
         LazyLock::new(|| ResolveInputKindTestCase {
+            description: "uses stdin when data is piped",
             paths: vec![],
             stdin_is_terminal: false,
             expected: Some(InputKind::Stdin),
         });
     static INTERACTIVE_WITH_PATH_CASE: LazyLock<ResolveInputKindTestCase> =
         LazyLock::new(|| ResolveInputKindTestCase {
+            description: "uses paths when files are provided",
             paths: vec![PathBuf::from("sample.ion")],
             stdin_is_terminal: true,
             expected: Some(InputKind::Paths),
         });
     static INTERACTIVE_NO_INPUT_CASE: LazyLock<ResolveInputKindTestCase> =
         LazyLock::new(|| ResolveInputKindTestCase {
+            description: "rejects interactive stdin without files",
             paths: vec![],
             stdin_is_terminal: true,
             expected: None,
         });
 
-    #[test_case(&*PIPED_STDIN_CASE; "uses stdin when data is piped")]
-    #[test_case(&*INTERACTIVE_WITH_PATH_CASE; "uses paths when files are provided")]
-    #[test_case(&*INTERACTIVE_NO_INPUT_CASE; "rejects interactive stdin without files")]
+    #[test_case(&*PIPED_STDIN_CASE)]
+    #[test_case(&*INTERACTIVE_WITH_PATH_CASE)]
+    #[test_case(&*INTERACTIVE_NO_INPUT_CASE)]
     fn resolve_input_kind_cases(case: &ResolveInputKindTestCase) {
         assert_eq!(
             case.expected,
-            resolve_input_kind(&case.paths, case.stdin_is_terminal)
+            resolve_input_kind(&case.paths, case.stdin_is_terminal),
+            "{}",
+            case.description
         );
     }
 
@@ -382,6 +388,7 @@ mod tests {
 
     #[derive(Debug)]
     struct RunWithCliTestCase {
+        description: &'static str,
         cli: Cli,
         stdin_is_terminal: bool,
         expected: RunWithCliExpectation,
@@ -389,6 +396,7 @@ mod tests {
 
     static DEFAULT_COMMAND_MISSING_INPUT_CASE: LazyLock<RunWithCliTestCase> =
         LazyLock::new(|| RunWithCliTestCase {
+            description: "default command missing input",
             cli: Cli {
                 styles: vec![],
                 command: None,
@@ -398,6 +406,7 @@ mod tests {
         });
     static FORMAT_COMMAND_MISSING_INPUT_CASE: LazyLock<RunWithCliTestCase> =
         LazyLock::new(|| RunWithCliTestCase {
+            description: "format command missing input",
             cli: Cli {
                 styles: vec![],
                 command: Some(CliCommand::Format { paths: vec![] }),
@@ -407,6 +416,7 @@ mod tests {
         });
     static CHECK_COMMAND_MISSING_INPUT_CASE: LazyLock<RunWithCliTestCase> =
         LazyLock::new(|| RunWithCliTestCase {
+            description: "check command missing input",
             cli: Cli {
                 styles: vec![],
                 command: Some(CliCommand::Check { paths: vec![] }),
@@ -416,6 +426,7 @@ mod tests {
         });
     static STDOUT_COMMAND_MISSING_INPUT_CASE: LazyLock<RunWithCliTestCase> =
         LazyLock::new(|| RunWithCliTestCase {
+            description: "stdout command missing input",
             cli: Cli {
                 styles: vec![],
                 command: Some(CliCommand::Stdout { paths: vec![] }),
@@ -425,6 +436,7 @@ mod tests {
         });
     static CHECK_FORMATTED_FILE_CASE: LazyLock<RunWithCliTestCase> =
         LazyLock::new(|| RunWithCliTestCase {
+            description: "check command with formatted file",
             cli: Cli {
                 styles: vec![],
                 command: Some(CliCommand::Check {
@@ -436,6 +448,7 @@ mod tests {
         });
     static CHECK_UNFORMATTED_FILE_CASE: LazyLock<RunWithCliTestCase> =
         LazyLock::new(|| RunWithCliTestCase {
+            description: "check command with unformatted file",
             cli: Cli {
                 styles: vec![],
                 command: Some(CliCommand::Check {
@@ -446,23 +459,24 @@ mod tests {
             expected: RunWithCliExpectation::ExitCode(CliExitCode::Failure),
         });
 
-    #[test_case(&*DEFAULT_COMMAND_MISSING_INPUT_CASE; "default command missing input")]
-    #[test_case(&*FORMAT_COMMAND_MISSING_INPUT_CASE; "format command missing input")]
-    #[test_case(&*CHECK_COMMAND_MISSING_INPUT_CASE; "check command missing input")]
-    #[test_case(&*STDOUT_COMMAND_MISSING_INPUT_CASE; "stdout command missing input")]
-    #[test_case(&*CHECK_FORMATTED_FILE_CASE; "check command with formatted file")]
-    #[test_case(&*CHECK_UNFORMATTED_FILE_CASE; "check command with unformatted file")]
+    #[test_case(&*DEFAULT_COMMAND_MISSING_INPUT_CASE)]
+    #[test_case(&*FORMAT_COMMAND_MISSING_INPUT_CASE)]
+    #[test_case(&*CHECK_COMMAND_MISSING_INPUT_CASE)]
+    #[test_case(&*STDOUT_COMMAND_MISSING_INPUT_CASE)]
+    #[test_case(&*CHECK_FORMATTED_FILE_CASE)]
+    #[test_case(&*CHECK_UNFORMATTED_FILE_CASE)]
     fn run_with_cli_cases(case: &RunWithCliTestCase) {
         let actual = match run_with_cli(&case.cli, case.stdin_is_terminal) {
             Ok(code) => RunWithCliExpectation::ExitCode(code),
             Err(error) => RunWithCliExpectation::Error(error),
         };
 
-        assert_eq!(case.expected, actual);
+        assert_eq!(case.expected, actual, "{}", case.description);
     }
 
     #[derive(Debug)]
     struct ParseStyleCliTestCase {
+        description: &'static str,
         args: Vec<&'static str>,
         expected_field_style: Option<FieldStyle>,
         expected_spacing: Option<SectionSpacing>,
@@ -472,6 +486,7 @@ mod tests {
 
     static STYLE_DEFAULT_CASE: LazyLock<ParseStyleCliTestCase> =
         LazyLock::new(|| ParseStyleCliTestCase {
+            description: "default style is multiline",
             args: vec!["ion-fmt"],
             expected_field_style: Some(FieldStyle::Multiline),
             expected_spacing: Some(SectionSpacing::AdditionalNewLine),
@@ -480,6 +495,7 @@ mod tests {
         });
     static STYLE_SINGLELINE_CASE: LazyLock<ParseStyleCliTestCase> =
         LazyLock::new(|| ParseStyleCliTestCase {
+            description: "parses explicit singleline",
             args: vec!["ion-fmt", "--style", "dictionary-field=singleline"],
             expected_field_style: Some(FieldStyle::Singleline),
             expected_spacing: Some(SectionSpacing::AdditionalNewLine),
@@ -488,6 +504,7 @@ mod tests {
         });
     static STYLE_MULTILINE_CASE: LazyLock<ParseStyleCliTestCase> =
         LazyLock::new(|| ParseStyleCliTestCase {
+            description: "parses multiline",
             args: vec!["ion-fmt", "--style", "dictionary-field=multiline"],
             expected_field_style: Some(FieldStyle::Multiline),
             expected_spacing: Some(SectionSpacing::AdditionalNewLine),
@@ -496,6 +513,7 @@ mod tests {
         });
     static STYLE_LAST_WINS_CASE: LazyLock<ParseStyleCliTestCase> =
         LazyLock::new(|| ParseStyleCliTestCase {
+            description: "last style wins when repeated",
             args: vec![
                 "ion-fmt",
                 "--style",
@@ -510,6 +528,7 @@ mod tests {
         });
     static STYLE_SECTION_SPACING_NEWLINE_CASE: LazyLock<ParseStyleCliTestCase> =
         LazyLock::new(|| ParseStyleCliTestCase {
+            description: "parses section dictionary-table spacing style",
             args: vec!["ion-fmt", "--style", "section-spacing=newline"],
             expected_field_style: Some(FieldStyle::Multiline),
             expected_spacing: Some(SectionSpacing::NewLine),
@@ -518,6 +537,7 @@ mod tests {
         });
     static STYLE_SECTION_SPACING_ADDITIONAL_NEWLINE_CASE: LazyLock<ParseStyleCliTestCase> =
         LazyLock::new(|| ParseStyleCliTestCase {
+            description: "parses section dictionary-table additional spacing style",
             args: vec!["ion-fmt", "--style", "section-spacing=additional-newline"],
             expected_field_style: Some(FieldStyle::Multiline),
             expected_spacing: Some(SectionSpacing::AdditionalNewLine),
@@ -526,6 +546,7 @@ mod tests {
         });
     static STYLE_DOCUMENT_SPACING_NEWLINE_CASE: LazyLock<ParseStyleCliTestCase> =
         LazyLock::new(|| ParseStyleCliTestCase {
+            description: "parses document spacing style",
             args: vec!["ion-fmt", "--style", "document-spacing=end-newline"],
             expected_field_style: Some(FieldStyle::Multiline),
             expected_spacing: Some(SectionSpacing::AdditionalNewLine),
@@ -534,6 +555,7 @@ mod tests {
         });
     static STYLE_DOCUMENT_SPACING_ADDITIONAL_NEWLINE_CASE: LazyLock<ParseStyleCliTestCase> =
         LazyLock::new(|| ParseStyleCliTestCase {
+            description: "parses document additional spacing style",
             args: vec![
                 "ion-fmt",
                 "--style",
@@ -546,6 +568,7 @@ mod tests {
         });
     static STYLE_MISSING_VALUE_CASE: LazyLock<ParseStyleCliTestCase> =
         LazyLock::new(|| ParseStyleCliTestCase {
+            description: "rejects style missing value",
             args: vec!["ion-fmt", "--style", "dictionary-field"],
             expected_field_style: None,
             expected_spacing: None,
@@ -554,6 +577,7 @@ mod tests {
         });
     static STYLE_UNKNOWN_KEY_CASE: LazyLock<ParseStyleCliTestCase> =
         LazyLock::new(|| ParseStyleCliTestCase {
+            description: "rejects unknown style key",
             args: vec!["ion-fmt", "--style", "table-column=singleline"],
             expected_field_style: None,
             expected_spacing: None,
@@ -564,6 +588,7 @@ mod tests {
         });
     static STYLE_UNKNOWN_VALUE_CASE: LazyLock<ParseStyleCliTestCase> =
         LazyLock::new(|| ParseStyleCliTestCase {
+            description: "rejects unknown dictionary-field style value",
             args: vec!["ion-fmt", "--style", "dictionary-field=folded"],
             expected_field_style: None,
             expected_spacing: None,
@@ -572,6 +597,7 @@ mod tests {
         });
     static STYLE_UNKNOWN_SECTION_SPACING_VALUE_CASE: LazyLock<ParseStyleCliTestCase> =
         LazyLock::new(|| ParseStyleCliTestCase {
+            description: "rejects unknown section dictionary-table spacing value",
             args: vec!["ion-fmt", "--style", "section-spacing=double"],
             expected_field_style: None,
             expected_spacing: None,
@@ -580,6 +606,7 @@ mod tests {
         });
     static STYLE_UNKNOWN_DOCUMENT_SPACING_VALUE_CASE: LazyLock<ParseStyleCliTestCase> =
         LazyLock::new(|| ParseStyleCliTestCase {
+            description: "rejects unknown document spacing value",
             args: vec!["ion-fmt", "--style", "document-spacing=double"],
             expected_field_style: None,
             expected_spacing: None,
@@ -587,63 +614,52 @@ mod tests {
             expected_error_fragment: Some("Expected `end-newline` or `additional-end-newline`"),
         });
 
-    #[test_case(&*STYLE_DEFAULT_CASE; "default style is multiline")]
-    #[test_case(&*STYLE_SINGLELINE_CASE; "parses explicit singleline")]
-    #[test_case(&*STYLE_MULTILINE_CASE; "parses multiline")]
-    #[test_case(&*STYLE_LAST_WINS_CASE; "last style wins when repeated")]
-    #[test_case(
-        &*STYLE_SECTION_SPACING_NEWLINE_CASE;
-        "parses section dictionary-table spacing style"
-    )]
-    #[test_case(
-        &*STYLE_SECTION_SPACING_ADDITIONAL_NEWLINE_CASE;
-        "parses section dictionary-table additional spacing style"
-    )]
-    #[test_case(
-        &*STYLE_DOCUMENT_SPACING_NEWLINE_CASE;
-        "parses document spacing style"
-    )]
-    #[test_case(
-        &*STYLE_DOCUMENT_SPACING_ADDITIONAL_NEWLINE_CASE;
-        "parses document additional spacing style"
-    )]
-    #[test_case(&*STYLE_MISSING_VALUE_CASE; "rejects style missing value")]
-    #[test_case(&*STYLE_UNKNOWN_KEY_CASE; "rejects unknown style key")]
-    #[test_case(&*STYLE_UNKNOWN_VALUE_CASE; "rejects unknown dictionary-field style value")]
-    #[test_case(
-        &*STYLE_UNKNOWN_SECTION_SPACING_VALUE_CASE;
-        "rejects unknown section dictionary-table spacing value"
-    )]
-    #[test_case(
-        &*STYLE_UNKNOWN_DOCUMENT_SPACING_VALUE_CASE;
-        "rejects unknown document spacing value"
-    )]
+    #[test_case(&*STYLE_DEFAULT_CASE)]
+    #[test_case(&*STYLE_SINGLELINE_CASE)]
+    #[test_case(&*STYLE_MULTILINE_CASE)]
+    #[test_case(&*STYLE_LAST_WINS_CASE)]
+    #[test_case(&*STYLE_SECTION_SPACING_NEWLINE_CASE)]
+    #[test_case(&*STYLE_SECTION_SPACING_ADDITIONAL_NEWLINE_CASE)]
+    #[test_case(&*STYLE_DOCUMENT_SPACING_NEWLINE_CASE)]
+    #[test_case(&*STYLE_DOCUMENT_SPACING_ADDITIONAL_NEWLINE_CASE)]
+    #[test_case(&*STYLE_MISSING_VALUE_CASE)]
+    #[test_case(&*STYLE_UNKNOWN_KEY_CASE)]
+    #[test_case(&*STYLE_UNKNOWN_VALUE_CASE)]
+    #[test_case(&*STYLE_UNKNOWN_SECTION_SPACING_VALUE_CASE)]
+    #[test_case(&*STYLE_UNKNOWN_DOCUMENT_SPACING_VALUE_CASE)]
     fn parse_style_cli_cases(case: &ParseStyleCliTestCase) {
         match Cli::try_parse_from(case.args.clone()) {
             Ok(cli) => {
-                assert_eq!(case.expected_error_fragment, None);
+                assert_eq!(case.expected_error_fragment, None, "{}", case.description);
                 assert_eq!(
                     case.expected_field_style,
-                    Some(cli.format_options().dictionary.field)
+                    Some(cli.format_options().dictionary.field),
+                    "{}",
+                    case.description
                 );
                 assert_eq!(
                     case.expected_spacing,
-                    Some(cli.format_options().section.spacing)
+                    Some(cli.format_options().section.spacing),
+                    "{}",
+                    case.description
                 );
                 assert_eq!(
                     case.expected_document_spacing,
-                    Some(cli.format_options().document.spacing)
+                    Some(cli.format_options().document.spacing),
+                    "{}",
+                    case.description
                 );
             }
             Err(error) => {
                 let rendered = error.to_string();
-                assert_eq!(case.expected_field_style, None);
-                assert_eq!(case.expected_spacing, None);
-                assert_eq!(case.expected_document_spacing, None);
+                assert_eq!(case.expected_field_style, None, "{}", case.description);
+                assert_eq!(case.expected_spacing, None, "{}", case.description);
+                assert_eq!(case.expected_document_spacing, None, "{}", case.description);
                 assert!(
                     case.expected_error_fragment
                         .is_some_and(|fragment| rendered.contains(fragment)),
-                    "actual CLI parse error: {rendered}"
+                    "{}: actual CLI parse error: {rendered}",
+                    case.description
                 );
             }
         }

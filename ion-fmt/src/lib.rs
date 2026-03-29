@@ -185,12 +185,14 @@ mod tests {
 
     #[derive(Debug)]
     struct FormatStringTestCase {
+        description: &'static str,
         raw: &'static str,
         expected: &'static str,
     }
 
     #[derive(Debug)]
     struct FormatStringWithOptionsTestCase {
+        description: &'static str,
         raw: &'static str,
         options: FormatOptions,
         expected: &'static str,
@@ -198,12 +200,14 @@ mod tests {
 
     #[derive(Debug)]
     struct CheckStringTestCase {
+        description: &'static str,
         raw: &'static str,
         expected_is_formatted: bool,
     }
 
     static FORMAT_STRING_CASE: LazyLock<FormatStringTestCase> =
         LazyLock::new(|| FormatStringTestCase {
+            description: "formats string input",
             raw: indoc! {r#"
                 [ONE]
                 key = "foo"
@@ -225,6 +229,7 @@ mod tests {
         });
     static FORMAT_MULTILINE_DICTIONARY_STRING_CASE: LazyLock<FormatStringTestCase> =
         LazyLock::new(|| FormatStringTestCase {
+            description: "formats multiline dictionary string value",
             raw: indoc! {r#"
                 [Data]
                 select = "
@@ -262,20 +267,20 @@ mod tests {
             "#},
         });
 
-    #[test_case(&*FORMAT_STRING_CASE; "formats string input")]
-    #[test_case(
-        &*FORMAT_MULTILINE_DICTIONARY_STRING_CASE;
-        "formats multiline dictionary string value"
-    )]
+    #[test_case(&*FORMAT_STRING_CASE)]
+    #[test_case(&*FORMAT_MULTILINE_DICTIONARY_STRING_CASE)]
     fn default_format(case: &FormatStringTestCase) {
         assert_eq!(
             case.expected,
-            format_str_with_options(case.raw, FormatOptions::default()).unwrap()
+            format_str_with_options(case.raw, FormatOptions::default()).unwrap(),
+            "{}",
+            case.description
         );
     }
 
     const FORMAT_MULTILINE_DICTIONARY_STRING_WITH_MULTILINE_STYLE_CASE:
         FormatStringWithOptionsTestCase = FormatStringWithOptionsTestCase {
+        description: "formats multiline dictionary string value with multiline style option",
         raw: indoc! {r#"
                 [Data]
                 select = "
@@ -326,6 +331,7 @@ mod tests {
 
     const FORMAT_MULTILINE_DICTIONARY_STRING_WITH_SINGLELINE_STYLE_CASE:
         FormatStringWithOptionsTestCase = FormatStringWithOptionsTestCase {
+        description: "formats multiline dictionary string value with singleline style option",
         options: FormatOptions {
             dictionary: DictionaryOptions {
                 field: FieldStyle::Singleline,
@@ -352,6 +358,7 @@ mod tests {
     };
     const FORMAT_DICTIONARY_AND_TABLE_WITH_NEWLINE_SECTION_SPACING_CASE:
         FormatStringWithOptionsTestCase = FormatStringWithOptionsTestCase {
+        description: "formats dictionary and table with single newline section spacing",
         raw: indoc! {r#"
                 [ALPHA]
                 name = "foo"
@@ -381,6 +388,7 @@ mod tests {
     };
     const FORMAT_DICTIONARY_AND_TABLE_WITH_ADDITIONAL_NEWLINE_SECTION_SPACING_CASE:
         FormatStringWithOptionsTestCase = FormatStringWithOptionsTestCase {
+        description: "formats dictionary and table with extra spacing by default",
         options: FormatOptions {
             dictionary: DictionaryOptions {
                 field: FieldStyle::Singleline,
@@ -405,6 +413,7 @@ mod tests {
     };
     const FORMAT_TABLE_ONLY_WITH_NEWLINE_SECTION_SPACING_CASE: FormatStringWithOptionsTestCase =
         FormatStringWithOptionsTestCase {
+            description: "does not add section spacing when dictionary is empty",
             raw: indoc! {r"
                 [TABLE]
                 | c |
@@ -432,6 +441,7 @@ mod tests {
         };
     const FORMAT_DOCUMENT_WITH_ADDITIONAL_NEWLINE_SPACING_CASE: FormatStringWithOptionsTestCase =
         FormatStringWithOptionsTestCase {
+            description: "adds additional newline at end of document when configured",
             options: FormatOptions {
                 dictionary: DictionaryOptions {
                     field: FieldStyle::Singleline,
@@ -455,39 +465,24 @@ mod tests {
             ..FORMAT_DICTIONARY_AND_TABLE_WITH_NEWLINE_SECTION_SPACING_CASE
         };
 
-    #[test_case(
-        &FORMAT_MULTILINE_DICTIONARY_STRING_WITH_MULTILINE_STYLE_CASE;
-        "formats multiline dictionary string value with multiline style option"
-    )]
-    #[test_case(
-        &FORMAT_MULTILINE_DICTIONARY_STRING_WITH_SINGLELINE_STYLE_CASE;
-        "formats multiline dictionary string value with singleline style option"
-    )]
-    #[test_case(
-        &FORMAT_DICTIONARY_AND_TABLE_WITH_ADDITIONAL_NEWLINE_SECTION_SPACING_CASE;
-        "formats dictionary and table with extra spacing by default"
-    )]
-    #[test_case(
-        &FORMAT_DICTIONARY_AND_TABLE_WITH_NEWLINE_SECTION_SPACING_CASE;
-        "formats dictionary and table with single newline section spacing"
-    )]
-    #[test_case(
-        &FORMAT_TABLE_ONLY_WITH_NEWLINE_SECTION_SPACING_CASE;
-        "does not add section spacing when dictionary is empty"
-    )]
-    #[test_case(
-        &FORMAT_DOCUMENT_WITH_ADDITIONAL_NEWLINE_SPACING_CASE;
-        "adds additional newline at end of document when configured"
-    )]
+    #[test_case(&FORMAT_MULTILINE_DICTIONARY_STRING_WITH_MULTILINE_STYLE_CASE)]
+    #[test_case(&FORMAT_MULTILINE_DICTIONARY_STRING_WITH_SINGLELINE_STYLE_CASE)]
+    #[test_case(&FORMAT_DICTIONARY_AND_TABLE_WITH_ADDITIONAL_NEWLINE_SECTION_SPACING_CASE)]
+    #[test_case(&FORMAT_DICTIONARY_AND_TABLE_WITH_NEWLINE_SECTION_SPACING_CASE)]
+    #[test_case(&FORMAT_TABLE_ONLY_WITH_NEWLINE_SECTION_SPACING_CASE)]
+    #[test_case(&FORMAT_DOCUMENT_WITH_ADDITIONAL_NEWLINE_SPACING_CASE)]
     fn format_with_options_cases(case: &FormatStringWithOptionsTestCase) {
         assert_eq!(
             case.expected,
-            format_str_with_options(case.raw, case.options).unwrap()
+            format_str_with_options(case.raw, case.options).unwrap(),
+            "{}",
+            case.description
         );
     }
 
     static CHECK_FALSE_CASE: LazyLock<CheckStringTestCase> =
         LazyLock::new(|| CheckStringTestCase {
+            description: "not formatted",
             raw: indoc! {r"
             [A]
             [B]
@@ -495,6 +490,7 @@ mod tests {
             expected_is_formatted: false,
         });
     static CHECK_TRUE_CASE: LazyLock<CheckStringTestCase> = LazyLock::new(|| CheckStringTestCase {
+        description: "already formatted",
         raw: indoc! {r"
             [A]
 
@@ -505,6 +501,7 @@ mod tests {
     });
     static CHECK_MULTILINE_DICTIONARY_STRING_CASE: LazyLock<CheckStringTestCase> =
         LazyLock::new(|| CheckStringTestCase {
+            description: "multiline dictionary string already formatted",
             raw: indoc! {r#"
                 [Data]
                 select = "
@@ -526,16 +523,15 @@ mod tests {
             expected_is_formatted: true,
         });
 
-    #[test_case(&*CHECK_FALSE_CASE; "not formatted")]
-    #[test_case(&*CHECK_TRUE_CASE; "already formatted")]
-    #[test_case(
-        &*CHECK_MULTILINE_DICTIONARY_STRING_CASE;
-        "multiline dictionary string already formatted"
-    )]
+    #[test_case(&*CHECK_FALSE_CASE)]
+    #[test_case(&*CHECK_TRUE_CASE)]
+    #[test_case(&*CHECK_MULTILINE_DICTIONARY_STRING_CASE)]
     fn default_check(case: &CheckStringTestCase) {
         assert_eq!(
             case.expected_is_formatted,
-            check_str_with_options(case.raw, FormatOptions::default()).unwrap()
+            check_str_with_options(case.raw, FormatOptions::default()).unwrap(),
+            "{}",
+            case.description
         );
     }
 

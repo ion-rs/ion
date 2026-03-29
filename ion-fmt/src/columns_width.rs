@@ -163,14 +163,16 @@ where
 ///
 /// Separator rows are string-only rows containing spaces and `-` characters.
 fn data_or_separator<'a>(mut row: impl Iterator<Item = &'a Value>) -> RowTypeDisplay {
-    row.find_map(|column| {
-        if column.as_string()?.chars().all(|c| c == '-' || c == ' ') {
-            Some(RowTypeDisplay::Separator)
-        } else {
-            None
-        }
-    })
-    .unwrap_or(RowTypeDisplay::Data)
+    if row.all(|column| {
+        let Some(column) = column.as_string() else {
+            return false;
+        };
+        column.chars().all(|c| c == '-' || c == ' ')
+    }) {
+        RowTypeDisplay::Separator
+    } else {
+        RowTypeDisplay::Data
+    }
 }
 
 fn extend<'a, T>(columns: &mut ColumnsWidth, record: T)
@@ -207,12 +209,14 @@ mod tests {
 
     #[derive(Debug)]
     struct ColumnTypeFromTextTestCase {
+        description: &'static str,
         text: &'static str,
         expected: ColumnType,
     }
 
     #[derive(Debug)]
     struct ColumnTypeTransitTestCase {
+        description: &'static str,
         current: ColumnType,
         new: ColumnType,
         expected: ColumnType,
@@ -220,6 +224,7 @@ mod tests {
 
     #[derive(Debug)]
     struct DetectRowTypeTestCase {
+        description: &'static str,
         row: Vec<Value>,
         expected: RowTypeDisplay,
     }
@@ -230,91 +235,118 @@ mod tests {
 
     static COLUMN_TYPE_NUMBER_CASE: LazyLock<ColumnTypeFromTextTestCase> =
         LazyLock::new(|| ColumnTypeFromTextTestCase {
+            description: "number",
             text: "-1.0",
             expected: ColumnType::Number,
         });
     static COLUMN_TYPE_TEXT_CASE: LazyLock<ColumnTypeFromTextTestCase> =
         LazyLock::new(|| ColumnTypeFromTextTestCase {
+            description: "text",
             text: "1A",
             expected: ColumnType::Text,
         });
     static COLUMN_TYPE_INVALID_NUMBER_CASE: LazyLock<ColumnTypeFromTextTestCase> =
         LazyLock::new(|| ColumnTypeFromTextTestCase {
+            description: "invalid number",
             text: "--1",
             expected: ColumnType::Text,
         });
 
-    #[test_case(&*COLUMN_TYPE_NUMBER_CASE; "number")]
-    #[test_case(&*COLUMN_TYPE_TEXT_CASE; "text")]
-    #[test_case(&*COLUMN_TYPE_INVALID_NUMBER_CASE; "invalid number")]
+    #[test_case(&*COLUMN_TYPE_NUMBER_CASE)]
+    #[test_case(&*COLUMN_TYPE_TEXT_CASE)]
+    #[test_case(&*COLUMN_TYPE_INVALID_NUMBER_CASE)]
     fn column_type_from_text(case: &ColumnTypeFromTextTestCase) {
-        assert_eq!(case.expected, ColumnType::from(case.text));
+        assert_eq!(
+            case.expected,
+            ColumnType::from(case.text),
+            "{}",
+            case.description
+        );
     }
 
     static TRANSIT_DEFAULT_TO_NUMBER_CASE: LazyLock<ColumnTypeTransitTestCase> =
         LazyLock::new(|| ColumnTypeTransitTestCase {
+            description: "default to number",
             current: ColumnType::Default,
             new: ColumnType::Number,
             expected: ColumnType::Number,
         });
     static TRANSIT_NUMBER_TO_TEXT_CASE: LazyLock<ColumnTypeTransitTestCase> =
         LazyLock::new(|| ColumnTypeTransitTestCase {
+            description: "number to text",
             current: ColumnType::Number,
             new: ColumnType::Text,
             expected: ColumnType::Text,
         });
     static TRANSIT_TEXT_TO_NUMBER_CASE: LazyLock<ColumnTypeTransitTestCase> =
         LazyLock::new(|| ColumnTypeTransitTestCase {
+            description: "text stays text",
             current: ColumnType::Text,
             new: ColumnType::Number,
             expected: ColumnType::Text,
         });
 
-    #[test_case(&*TRANSIT_DEFAULT_TO_NUMBER_CASE; "default to number")]
-    #[test_case(&*TRANSIT_NUMBER_TO_TEXT_CASE; "number to text")]
-    #[test_case(&*TRANSIT_TEXT_TO_NUMBER_CASE; "text stays text")]
+    #[test_case(&*TRANSIT_DEFAULT_TO_NUMBER_CASE)]
+    #[test_case(&*TRANSIT_NUMBER_TO_TEXT_CASE)]
+    #[test_case(&*TRANSIT_TEXT_TO_NUMBER_CASE)]
     fn column_type_transit(case: &ColumnTypeTransitTestCase) {
-        assert_eq!(case.expected, case.current.transit(case.new));
+        assert_eq!(
+            case.expected,
+            case.current.transit(case.new),
+            "{}",
+            case.description
+        );
     }
 
     static SEPARATOR_ROW_CASE: LazyLock<DetectRowTypeTestCase> =
         LazyLock::new(|| DetectRowTypeTestCase {
+            description: "separator row",
             row: vec![string("-----"), string(" ---- ")],
             expected: RowTypeDisplay::Separator,
         });
     static DATA_ROW_CASE: LazyLock<DetectRowTypeTestCase> =
         LazyLock::new(|| DetectRowTypeTestCase {
+            description: "data row",
             row: vec![string("A"), Value::Integer(1)],
             expected: RowTypeDisplay::Data,
         });
     static NON_SEPARATOR_STRING_ROW_CASE: LazyLock<DetectRowTypeTestCase> =
         LazyLock::new(|| DetectRowTypeTestCase {
+            description: "non separator string row",
             row: vec![string("-----"), string("not-separator")],
-            expected: RowTypeDisplay::Separator,
+            expected: RowTypeDisplay::Data,
         });
     static MIXED_SEPARATOR_AND_TEXT_CASE: LazyLock<DetectRowTypeTestCase> =
         LazyLock::new(|| DetectRowTypeTestCase {
+            description: "mixed separator and text row",
             row: vec![string("-----"), string("abc"), string("---")],
-            expected: RowTypeDisplay::Separator,
+            expected: RowTypeDisplay::Data,
         });
     static TEXT_THEN_SEPARATORS_CASE: LazyLock<DetectRowTypeTestCase> =
         LazyLock::new(|| DetectRowTypeTestCase {
+            description: "text then separators row",
             row: vec![string("abc"), string("----"), string("----")],
-            expected: RowTypeDisplay::Separator,
+            expected: RowTypeDisplay::Data,
         });
     static EMPTY_ROW_CASE: LazyLock<DetectRowTypeTestCase> =
         LazyLock::new(|| DetectRowTypeTestCase {
+            description: "empty row",
             row: vec![],
-            expected: RowTypeDisplay::Data,
+            expected: RowTypeDisplay::Separator,
         });
 
-    #[test_case(&*SEPARATOR_ROW_CASE; "separator row")]
-    #[test_case(&*DATA_ROW_CASE; "data row")]
-    #[test_case(&*NON_SEPARATOR_STRING_ROW_CASE; "non separator string row")]
-    #[test_case(&*MIXED_SEPARATOR_AND_TEXT_CASE; "mixed separator and text row")]
-    #[test_case(&*TEXT_THEN_SEPARATORS_CASE; "text then separators row")]
-    #[test_case(&*EMPTY_ROW_CASE; "empty row")]
+    #[test_case(&*SEPARATOR_ROW_CASE)]
+    #[test_case(&*DATA_ROW_CASE)]
+    #[test_case(&*NON_SEPARATOR_STRING_ROW_CASE)]
+    #[test_case(&*MIXED_SEPARATOR_AND_TEXT_CASE)]
+    #[test_case(&*TEXT_THEN_SEPARATORS_CASE)]
+    #[test_case(&*EMPTY_ROW_CASE)]
     fn detects_row_type(case: &DetectRowTypeTestCase) {
-        assert_eq!(case.expected, data_or_separator(case.row.iter()));
+        assert_eq!(
+            case.expected,
+            data_or_separator(case.row.iter()),
+            "{}",
+            case.description
+        );
     }
 }
