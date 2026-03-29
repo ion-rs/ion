@@ -282,32 +282,21 @@ impl fmt::Display for DictionaryFieldDisplay<'_> {
 
 impl fmt::Display for RowsDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut rows_iter = self.rows.iter();
+        if self.rows.is_empty() {
+            return Ok(());
+        }
 
-        if let Some(row) = rows_iter.next() {
-            RowDisplay {
-                columns_width: self.columns_width,
-                row,
-                row_type: RowTypeDisplay::Header,
-            }
-            .fmt(f)?;
-
-            RowDisplay {
-                columns_width: self.columns_width,
-                row,
-                row_type: RowTypeDisplay::Separator,
-            }
-            .fmt(f)?;
-
-            rows_iter.skip(1).try_for_each(|row| {
+        self.rows
+            .iter()
+            .enumerate()
+            .try_for_each(|(row_idx, row)| {
                 RowDisplay {
                     columns_width: self.columns_width,
                     row,
-                    row_type: data_or_separator(row.iter()),
+                    row_type: self.columns_width.row_type(row_idx),
                 }
                 .fmt(f)
             })?;
-        }
 
         Ok(())
     }
@@ -448,25 +437,6 @@ fn write_data_next_columns(
     Ok(())
 }
 
-/// Detects whether a row represents table data or a separator row.
-///
-/// Separator rows are string-only rows containing spaces and `-` characters.
-pub(crate) fn data_or_separator<'a>(mut row: impl Iterator<Item = &'a Value>) -> RowTypeDisplay {
-    row.try_fold(RowTypeDisplay::Data, |_acc, column| {
-        if column
-            .as_string()
-            .ok_or(RowTypeDisplay::Data)?
-            .chars()
-            .all(|c| c == '-' || c == ' ')
-        {
-            Ok(RowTypeDisplay::Separator)
-        } else {
-            Err(RowTypeDisplay::Data)
-        }
-    })
-    .unwrap_or(RowTypeDisplay::Data)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -483,12 +453,6 @@ mod tests {
         raw: &'static str,
         options: FormatOptions,
         expected: &'static str,
-    }
-
-    #[derive(Debug)]
-    struct DataOrSeparatorTestCase {
-        row: Row,
-        expected: RowTypeDisplay,
     }
 
     #[derive(Debug)]
@@ -774,6 +738,33 @@ mod tests {
 
         "},
         };
+    const TEST_2_WITHOUT_HEADER_TABLE: IonFormatTestCase = IonFormatTestCase {
+        description: "TEST_2 table rows without explicit header separator are formatted consistently",
+        raw: indoc! {r"
+            [WITHOUT_HEADER]
+            | 1 | alpha | PL | 11.2 | ok |
+            | 2 | beta | DE | 9 | hold |
+            | 3 | gamma | UK | 13.75 | ok |
+        "},
+        options: FormatOptions {
+            dictionary: DictionaryOptions {
+                field: FieldStyle::Singleline,
+            },
+            section: SectionOptions {
+                spacing: SectionSpacing::AdditionalNewLine,
+            },
+            document: DocumentOptions {
+                spacing: DocumentSpacing::EndNewLine,
+            },
+        },
+        expected: indoc! {r"
+            [WITHOUT_HEADER]
+            | 1 | alpha | PL |  11.2 | ok   |
+            | 2 | beta  | DE |     9 | hold |
+            | 3 | gamma | UK | 13.75 | ok   |
+
+        "},
+    };
     #[test_case(&*ION_FORMAT_CASE; "TEST_0A")]
     #[test_case(&*ION_FORMAT_NON_STRING_DICTIONARY_CASE; "TEST_0B")]
     #[test_case(&TEST_1A_BASE_CASE; "TEST_1A")]
@@ -782,6 +773,7 @@ mod tests {
     #[test_case(&TEST_1D_DOCUMENT_ADDITIONAL_NEWLINE_CASE; "TEST_1D")]
     #[test_case(&TEST_1E_DEFAULT_BEHAVIOR_CASE; "TEST_1E")]
     #[test_case(&TEST_1F_TABLE_ONLY_WITH_DEFAULT_SECTION_SPACING_CASE; "TEST_1F")]
+    #[test_case(&TEST_2_WITHOUT_HEADER_TABLE; "TEST_2xxx")]
     fn format_ion_document(case: &IonFormatTestCase) {
         let ion = case.raw.parse::<Ion>().unwrap();
         assert_eq!(
@@ -935,35 +927,6 @@ mod tests {
             case.expected,
             render_dictionary_multiline_string(case.key, case.text)
         );
-    }
-
-    static SEPARATOR_ROW_CASE: LazyLock<DataOrSeparatorTestCase> =
-        LazyLock::new(|| DataOrSeparatorTestCase {
-            row: vec![string("-----"), string(" ---- ")],
-            expected: RowTypeDisplay::Separator,
-        });
-    static DATA_ROW_CASE: LazyLock<DataOrSeparatorTestCase> =
-        LazyLock::new(|| DataOrSeparatorTestCase {
-            row: vec![string("A"), Value::Integer(1)],
-            expected: RowTypeDisplay::Data,
-        });
-    static NON_SEPARATOR_STRING_ROW_CASE: LazyLock<DataOrSeparatorTestCase> =
-        LazyLock::new(|| DataOrSeparatorTestCase {
-            row: vec![string("-----"), string("not-separator")],
-            expected: RowTypeDisplay::Data,
-        });
-    static EMPTY_ROW_CASE: LazyLock<DataOrSeparatorTestCase> =
-        LazyLock::new(|| DataOrSeparatorTestCase {
-            row: vec![],
-            expected: RowTypeDisplay::Data,
-        });
-
-    #[test_case(&*SEPARATOR_ROW_CASE; "separator row")]
-    #[test_case(&*DATA_ROW_CASE; "data row")]
-    #[test_case(&*NON_SEPARATOR_STRING_ROW_CASE; "non separator string row")]
-    #[test_case(&*EMPTY_ROW_CASE; "empty row")]
-    fn detects_row_type(case: &DataOrSeparatorTestCase) {
-        assert_eq!(case.expected, data_or_separator(case.row.iter()));
     }
 
     static HEADER_ROW_DISPLAY_CASE: LazyLock<RowDisplayTestCase> =
