@@ -25,6 +25,13 @@ For `dictionary-indexmap` snapshots, see `README.indexmap.md`.
 
 `ion-fmt` backend is selected at build/install time; one installed binary uses one backend.
 
+## VS Code
+
+A first-party VS Code extension is included at `vscode-extension/`.
+It registers `.ion` files and formats them by invoking `ion-fmt`.
+Repository workspace settings enable format-on-save for Ion files when this
+formatter extension is installed.
+
 ## Library
 
 ```rust

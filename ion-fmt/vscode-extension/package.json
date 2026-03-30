@@ -1,0 +1,147 @@
+{
+  "name": "ion-fmt-vscode",
+  "displayName": "ion-fmt",
+  "description": "First-party VS Code formatter for .ion files powered by ion-fmt.",
+  "version": "0.1.0",
+  "publisher": "ion-rs",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ion-rs/ion.git",
+    "directory": "ion-fmt/vscode-extension"
+  },
+  "homepage": "https://github.com/ion-rs/ion/tree/main/ion-fmt/vscode-extension",
+  "bugs": {
+    "url": "https://github.com/ion-rs/ion/issues"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "This extension runs the local ion-fmt executable and requires a trusted workspace."
+    }
+  },
+  "categories": [
+    "Formatters"
+  ],
+  "keywords": [
+    "ion",
+    "formatter",
+    "ion-fmt"
+  ],
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#0F1726",
+    "theme": "dark"
+  },
+  "main": "./extension.js",
+  "contributes": {
+    "configurationDefaults": {
+      "[ion]": {
+        "editor.defaultFormatter": "ion-rs.ion-fmt-vscode",
+        "editor.formatOnSave": true
+      }
+    },
+    "languages": [
+      {
+        "id": "ion",
+        "aliases": [
+          "Ion",
+          "ion"
+        ],
+        "extensions": [
+          ".ion"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "ionFmt.formatDocument",
+        "title": "Ion: Format Document with ion-fmt"
+      }
+    ],
+    "configuration": {
+      "title": "ion-fmt",
+      "properties": {
+        "ionFmt.executablePath": {
+          "scope": "language-overridable",
+          "type": "string",
+          "default": "ion-fmt",
+          "description": "Path to the ion-fmt executable."
+        },
+        "ionFmt.dictionaryField": {
+          "scope": "language-overridable",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": "multiline",
+          "enum": [
+            null,
+            "singleline",
+            "multiline"
+          ],
+          "description": "Maps to --style dictionary-field=<value>. Use null to keep ion-fmt default."
+        },
+        "ionFmt.sectionSpacing": {
+          "scope": "language-overridable",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": "newline",
+          "enum": [
+            null,
+            "newline",
+            "additional-newline"
+          ],
+          "description": "Maps to --style section-spacing=<value>. Use null to keep ion-fmt default."
+        },
+        "ionFmt.documentSpacing": {
+          "scope": "language-overridable",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": "end-newline",
+          "enum": [
+            null,
+            "end-newline",
+            "additional-end-newline"
+          ],
+          "description": "Maps to --style document-spacing=<value>. Use null to keep ion-fmt default."
+        },
+        "ionFmt.style": {
+          "scope": "language-overridable",
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "description": "Additional raw --style key=value options passed to ion-fmt (applied after typed style settings)."
+        },
+        "ionFmt.timeoutMs": {
+          "scope": "language-overridable",
+          "type": "number",
+          "default": 10000,
+          "minimum": 1,
+          "description": "Timeout in milliseconds for a single ion-fmt invocation."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "lint": "node --check extension.js",
+    "package": "npx @vscode/vsce package",
+    "test:unit": "mocha --ui tdd ./test/unit/**/*.test.js",
+    "test:integration": "node ./test/runTest.js",
+    "test": "npm run test:unit && npm run test:integration"
+  },
+  "devDependencies": {
+    "@vscode/test-electron": "^2.5.2",
+    "mocha": "^11.7.2"
+  }
+}
